@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fulmine-Sparks Generated Images</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .image-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .image-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+        }
+        
+        .image-container {
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+            background: #f0f0f0;
+        }
+        
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .image-info {
+            padding: 20px;
+        }
+        
+        .image-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .image-prompt {
+            color: #666;
+            font-size: 0.95em;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+        
+        .image-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            font-size: 0.85em;
+            color: #999;
+        }
+        
+        .model-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        
+        .footer {
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .stats {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            color: white;
+            text-align: center;
+        }
+        
+        .stats h2 {
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+        
+        .stats p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Fulmine-Sparks Generated Images</h1>
+        <p class="subtitle">AI-powered image generation with Lightning payments</p>
+        
+        <div class="stats">
+            <h2>✨ Generation Complete</h2>
+            <p>3 images successfully generated using Stable Diffusion v1.5</p>
+        </div>
+        
+        <div class="gallery">
+            <div class="image-card">
+                <div class="image-container">
+                    <img src="image_1_1.png" alt="Sunset landscape">
+                </div>
+                <div class="image-info">
+                    <div class="image-title">🌅 Sunset Landscape</div>
+                    <div class="image-prompt">a beautiful sunset over mountains</div>
+                    <div class="image-meta">
+                        <span class="model-badge">Stable Diffusion</span>
+                        <span>742 KB</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="image-card">
+                <div class="image-container">
+                    <img src="image_2_1.png" alt="Cat playing">
+                </div>
+                <div class="image-info">
+                    <div class="image-title">🐱 Cat Playing</div>
+                    <div class="image-prompt">a cute cat playing with a ball</div>
+                    <div class="image-meta">
+                        <span class="model-badge">Stable Diffusion</span>
+                        <span>998 KB</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="image-card">
+                <div class="image-container">
+                    <img src="image_3_1.png" alt="Futuristic city">
+                </div>
+                <div class="image-info">
+                    <div class="image-title">🌃 Futuristic City</div>
+                    <div class="image-prompt">a futuristic city skyline at night</div>
+                    <div class="image-meta">
+                        <span class="model-badge">Stable Diffusion</span>
+                        <span>1.2 MB</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Generated with Fulmine-Sparks ⚡ | Powered by Replicate API</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">All images are returned as base64-encoded data for easy bot integration</p>
+        </div>
+    </div>
+</body>
+</html>
