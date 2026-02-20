@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     
     # Moderation Configuration
     MODERATION_ENABLED: bool = True
-    MODERATION_THRESHOLD: float = 0.5
+    MODERATION_THRESHOLD: float = 0.15
     
     # Image Generation Configuration
     IMAGE_WIDTH: int = 512

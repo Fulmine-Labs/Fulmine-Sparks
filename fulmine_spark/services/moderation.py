@@ -55,8 +55,8 @@ class ModerationService:
         
         # Calculate score based on keyword matches
         # More matches = higher score
-        max_keywords = len(ModerationService.UNSAFE_KEYWORDS)
-        score = min(unsafe_count / max(max_keywords / 10, 1), 1.0)
+        # Each keyword match increases score by 0.1
+        score = min(unsafe_count * 0.1, 1.0)
         
         return score
     
