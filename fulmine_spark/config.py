@@ -16,7 +16,14 @@ class Settings(BaseSettings):
     SERVICE_ENV: str = "development"  # development or production
     
     # Replicate API Configuration
+    # The replicate library uses REPLICATE_API_TOKEN, but we support both for flexibility
+    REPLICATE_API_TOKEN: Optional[str] = None
     REPLICATE_API_KEY: Optional[str] = None
+    
+    @property
+    def replicate_api_key(self) -> Optional[str]:
+        """Get Replicate API key, checking both TOKEN and KEY variants."""
+        return self.REPLICATE_API_TOKEN or self.REPLICATE_API_KEY
     
     # BTCPay Server Configuration
     BTCPAY_SERVER_URL: Optional[str] = None

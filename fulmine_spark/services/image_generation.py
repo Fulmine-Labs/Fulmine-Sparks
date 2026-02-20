@@ -15,31 +15,29 @@ class ImageGenerationService:
     """Service for generating images using Replicate API."""
     
     # Model configurations
+    # Using specific model versions from Replicate
     MODELS = {
         "stable-diffusion": {
-            "model": "stability-ai/stable-diffusion",
+            "model": "stability-ai/stable-diffusion:ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4",
             "cost": settings.STABLE_DIFFUSION_PRICE,
             "description": "Stable Diffusion v1.5",
         },
-        "stable-diffusion-xl": {
-            "model": "stability-ai/stable-diffusion-xl",
-            "cost": settings.STABLE_DIFFUSION_XL_PRICE,
-            "description": "Stable Diffusion XL",
-        },
         "dall-e": {
-            "model": "openai/dall-e-3",
+            "model": "openai/dall-e-3:3711283151f5835402c01332a54cc16809921fc0d9fe9e9a65ce5967f1685a00",
             "cost": settings.DALLE_PRICE,
             "description": "DALL-E 3",
+        },
+        "nano-banana": {
+            "model": "google/nano-banana-pro:9f57615b766710492f0887bec039aed69178c6db88839fca425ce6b78d858999",
+            "cost": settings.STABLE_DIFFUSION_PRICE,
+            "description": "Google Nano Banana Pro",
         },
     }
     
     def __init__(self):
         """Initialize the image generation service."""
-        if not settings.REPLICATE_API_KEY:
-            logger.warning("REPLICATE_API_KEY not set. Image generation will fail.")
-        
-        # Set Replicate API key
-        replicate.api_token = settings.REPLICATE_API_KEY
+        if not settings.replicate_api_key:
+            logger.warning("REPLICATE_API_TOKEN or REPLICATE_API_KEY not set. Image generation will fail.")
     
     @staticmethod
     def get_model_info(model_name: str) -> dict:
@@ -97,8 +95,8 @@ class ImageGenerationService:
         Raises:
             ValueError: If model is unknown or API key is not set
         """
-        if not settings.REPLICATE_API_KEY:
-            raise ValueError("REPLICATE_API_KEY not configured")
+        if not settings.replicate_api_key:
+            raise ValueError("REPLICATE_API_TOKEN or REPLICATE_API_KEY not configured")
         
         model_info = self.get_model_info(model)
         model_path = model_info["model"]

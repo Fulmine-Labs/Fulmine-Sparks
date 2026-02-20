@@ -8,6 +8,10 @@ import sys
 import os
 import asyncio
 
+# Load .env FIRST before importing anything from fulmine_spark
+from dotenv import load_dotenv
+load_dotenv()
+
 # Add project to path
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -22,14 +26,14 @@ async def test_image_generation():
     print("=" * 60)
     
     # Check if API key is configured
-    if not settings.REPLICATE_API_KEY:
-        print("\n❌ REPLICATE_API_KEY not configured!")
-        print("Please set REPLICATE_API_KEY in .env file")
+    if not settings.replicate_api_key:
+        print("\n❌ REPLICATE_API_TOKEN or REPLICATE_API_KEY not configured!")
+        print("Please set REPLICATE_API_TOKEN in .env file")
         print("Get your key from: https://replicate.com/account/api-tokens")
         return False
     
     print("\n✓ Replicate API Key: Configured")
-    print(f"✓ API Key (first 10 chars): {settings.REPLICATE_API_KEY[:10]}...")
+    print(f"✓ API Key (first 10 chars): {settings.replicate_api_key[:10]}...")
     
     # Test prompts
     test_cases = [
