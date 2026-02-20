@@ -7,3 +7,5 @@ httpx==0.25.2
 replicate==0.20.0
 requests==2.31.0
 pillow==10.1.0
+flask==3.0.0
+flask-cors==4.0.0

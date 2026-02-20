@@ -190,10 +190,13 @@ def main():
     import asyncio
     global asyncio
     
+    # Get port from environment or default to 8000
+    port = int(os.getenv('PORT', 8000))
+    
     print("=" * 60)
     print("🎨 Fulmine-Sparks Test Server")
     print("=" * 60)
-    print("\n✅ Starting server...")
+    print(f"\n✅ Starting server on port {port}...")
     print("✅ Endpoints:")
     print("   GET  /health")
     print("   POST /api/v1/moderation/check")
@@ -204,7 +207,7 @@ def main():
     # Run Flask app
     app.run(
         host='0.0.0.0',
-        port=8000,
+        port=port,
         debug=False,
         use_reloader=False
     )
