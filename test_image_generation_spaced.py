@@ -69,26 +69,31 @@ async def test_image_generation_spaced():
             print("  Status: Generating...")
             
             # Generate image
-            image_urls = await image_generation_service.generate_image(
+            image_urls, image_base64 = await image_generation_service.generate_image(
                 prompt=test_case['prompt'],
                 model=test_case['model'],
                 num_outputs=1,
                 guidance_scale=7.5,
                 num_inference_steps=50,
+                return_base64=True,
             )
             
             print(f"  ✓ SUCCESS!")
             print(f"  Generated {len(image_urls)} image(s)")
             
-            for j, url in enumerate(image_urls, 1):
-                # Show full URL
+            for j, (url, b64) in enumerate(zip(image_urls, image_base64), 1):
+                # Show base64 preview
                 print(f"    Image {j}:")
-                print(f"    {url}")
+                if b64:
+                    print(f"    Base64: {b64[:80]}...")
+                else:
+                    print(f"    URL: {url}")
             
             results.append({
                 "test": test_case['description'],
                 "status": "PASS",
-                "urls": image_urls
+                "urls": image_urls,
+                "base64": image_base64
             })
             
         except Exception as e:
@@ -121,11 +126,12 @@ async def test_image_generation_spaced():
     
     if failed == 0:
         print("\n✓ ALL IMAGE GENERATION TESTS PASSED!")
-        print("\nGenerated Images:")
+        print("\nGenerated Images (Base64):")
         for i, result in enumerate(results, 1):
             print(f"\n{i}. {result['test']}")
-            for url in result['urls']:
-                print(f"   {url}")
+            for j, b64 in enumerate(result.get('base64', []), 1):
+                if b64:
+                    print(f"   Image {j}: {b64[:100]}...")
         print("\nYour Fulmine-Sparks service is ready to generate images! 🎉")
         return True
     else:

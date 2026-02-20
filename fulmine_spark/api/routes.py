@@ -148,18 +148,20 @@ async def generate_image(
         
         # Generate image
         start_time = time.time()
-        image_urls = await image_generation_service.generate_image(
+        image_urls, image_base64 = await image_generation_service.generate_image(
             prompt=prompt,
             model=model,
             num_outputs=num_outputs,
             guidance_scale=guidance_scale,
             num_inference_steps=num_inference_steps,
+            return_base64=True,
         )
         processing_time = time.time() - start_time
         
         return ImageGenerationResponse(
             status="completed",
             image_urls=image_urls,
+            image_base64=image_base64,
             error=None,
             processing_time=processing_time,
         )

@@ -78,7 +78,8 @@ class ImageGenerationService:
         num_outputs: int = 1,
         guidance_scale: float = 7.5,
         num_inference_steps: int = 50,
-    ) -> List[str]:
+        return_base64: bool = True,
+    ) -> tuple[List[str], List[str]]:
         """
         Generate an image using Replicate API.
         
@@ -88,9 +89,10 @@ class ImageGenerationService:
             num_outputs: Number of images to generate
             guidance_scale: Guidance scale for generation
             num_inference_steps: Number of inference steps
+            return_base64: Whether to return base64 encoded images
             
         Returns:
-            List of image URLs
+            Tuple of (image_urls, image_base64_list)
             
         Raises:
             ValueError: If model is unknown or API key is not set
@@ -122,7 +124,32 @@ class ImageGenerationService:
                 urls = [output]
             
             logger.info(f"Successfully generated {len(urls)} image(s)")
-            return urls
+            
+            # Convert to base64 if requested
+            base64_images = []
+            if return_base64:
+                import requests
+                import base64
+                
+                for url in urls:
+                    try:
+                        # Download image from URL
+                        response = requests.get(url, timeout=30)
+                        response.raise_for_status()
+                        
+                        # Encode to base64
+                        image_data = base64.b64encode(response.content).decode('utf-8')
+                        
+                        # Add data URI prefix
+                        base64_uri = f"data:image/png;base64,{image_data}"
+                        base64_images.append(base64_uri)
+                        
+                        logger.info(f"Successfully encoded image to base64")
+                    except Exception as e:
+                        logger.error(f"Failed to encode image to base64: {str(e)}")
+                        base64_images.append("")  # Empty string on failure
+            
+            return urls, base64_images
             
         except Exception as e:
             logger.error(f"Image generation failed: {str(e)}")
