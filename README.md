@@ -60,9 +60,11 @@ curl -X POST http://localhost:8000/api/v1/invoice \
 
 ## API Endpoints
 
-### Create Invoice
+### Image Generation Service
+
+#### Create Invoice
 ```
-POST /api/v1/invoice
+POST /api/v1/services/image/invoice
 ```
 
 Request:
@@ -88,9 +90,9 @@ Response:
 }
 ```
 
-### Generate Image
+#### Generate Image
 ```
-GET /api/v1/image/{invoice_id}?prompt=...&model=stable-diffusion
+GET /api/v1/services/image/generate/{invoice_id}?prompt=...&model=stable-diffusion
 ```
 
 Response:
@@ -100,6 +102,11 @@ Response:
   "image_urls": ["https://..."],
   "processing_time": 45.2
 }
+```
+
+#### List Models
+```
+GET /api/v1/services/image/models
 ```
 
 ### Check Moderation

@@ -56,11 +56,11 @@ Service runs on `http://localhost:8000`
 # Check health
 curl http://localhost:8000/api/v1/health
 
-# List models
-curl http://localhost:8000/api/v1/models
+# List image generation models
+curl http://localhost:8000/api/v1/services/image/models
 
-# Create invoice
-curl -X POST http://localhost:8000/api/v1/invoice \
+# Create invoice for image generation
+curl -X POST http://localhost:8000/api/v1/services/image/invoice \
   -H "Content-Type: application/json" \
   -d '{
     "model": "stable-diffusion",
@@ -75,14 +75,16 @@ curl -X POST http://localhost:8000/api/v1/invoice \
 GET /api/v1/health
 ```
 
-### List Models
+### Image Generation Service
+
+#### List Available Models
 ```
-GET /api/v1/models
+GET /api/v1/services/image/models
 ```
 
-### Create Invoice
+#### Create Invoice
 ```
-POST /api/v1/invoice
+POST /api/v1/services/image/invoice
 Content-Type: application/json
 
 {
@@ -106,9 +108,9 @@ Response:
 }
 ```
 
-### Generate Image (After Payment)
+#### Generate Image (After Payment)
 ```
-GET /api/v1/image/{invoice_id}?prompt=...&model=stable-diffusion
+GET /api/v1/services/image/generate/{invoice_id}?prompt=...&model=stable-diffusion
 ```
 
 ### Check Moderation

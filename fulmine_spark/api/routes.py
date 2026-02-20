@@ -46,10 +46,10 @@ async def health_check():
     )
 
 
-@router.post("/invoice", response_model=InvoiceResponse)
-async def create_invoice(request: InvoiceRequest):
+@router.post("/services/image/invoice", response_model=InvoiceResponse)
+async def create_image_invoice(request: InvoiceRequest):
     """
-    Create a Lightning invoice for image generation.
+    Create a Lightning invoice for image generation service.
     
     Args:
         request: Invoice request with model and prompt
@@ -102,7 +102,7 @@ async def create_invoice(request: InvoiceRequest):
         )
 
 
-@router.get("/image/{invoice_id}", response_model=ImageGenerationResponse)
+@router.get("/services/image/generate/{invoice_id}", response_model=ImageGenerationResponse)
 async def generate_image(
     invoice_id: str,
     prompt: str = Query(..., min_length=1, max_length=1000),
@@ -238,8 +238,8 @@ async def check_payment_status(request: PaymentStatusRequest):
         )
 
 
-@router.get("/models")
-async def list_models():
+@router.get("/services/image/models")
+async def list_image_models():
     """
     List available image generation models.
     
