@@ -38,7 +38,7 @@ Resources:
         Variables:
           REPLICATE_API_TOKEN: !Ref ReplicateApiToken
       Code:
-        S3Bucket: !Sub 'fulmine-sparks-${AWS::AccountId}'
+        S3Bucket: 'fulmine-sparks-7429385016'
         S3Key: 'fulmine-sparks.zip'
 
   # API Gateway HTTP API
