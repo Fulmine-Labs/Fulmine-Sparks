@@ -35,7 +35,13 @@ def lambda_handler(event, context):
         print(f"DEBUG: rawPath={event.get('rawPath')}")
         print(f"DEBUG: requestContext.http.path={event.get('requestContext', {}).get('http', {}).get('path')}")
         print(f"DEBUG: pathParameters={event.get('pathParameters')}")
-        print(f"DEBUG: Final path={path}")
+        print(f"DEBUG: Final path before normalization={path}")
+        
+        # Normalize path - remove trailing slash except for root
+        if path != '/' and path.endswith('/'):
+            path = path[:-1]
+        
+        print(f"DEBUG: Final path after normalization={path}")
         
         body = event.get('body', '{}')
         
