@@ -23,6 +23,10 @@ def lambda_handler(event, context):
         http_method = event.get('requestContext', {}).get('http', {}).get('method', 'GET')
         path = event.get('rawPath', '/')
         
+        # Debug: print raw event
+        print(f"DEBUG: Full event: {json.dumps(event, default=str)}")
+        print(f"DEBUG: rawPath={path}")
+        
         # Strip stage prefix if present (e.g., /prod/health -> /health)
         if path.startswith('/prod/'):
             path = path[5:]  # Remove '/prod'
