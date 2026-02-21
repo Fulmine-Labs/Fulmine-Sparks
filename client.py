@@ -310,22 +310,7 @@ def main():
                     print(f"🎨 Model: {result['model']}")
                     print(f"⏱️  Processing time: {result['processing_time']:.2f}s")
                     
-                    image_base64_list = result.get("image_base64", [])
-                    for i, base64_data in enumerate(image_base64_list, 1):
-                        if base64_data:
-                            print(f"\n🖼️  Image {i}:")
-                            print(f"   Base64 length: {len(base64_data)} characters")
-                            
-                            # Automatically save the image
-                            filepath = save_base64_image(base64_data)
-                            if filepath:
-                                print(f"   ✅ Saved to: {filepath}")
-                                # Automatically open the image
-                                open_image(filepath)
-                        else:
-                            print(f"\n❌ Image {i}: Failed to generate")
-                    
-                    # Display invoice if available
+                    # Display invoice FIRST if available
                     invoice = result.get("invoice")
                     if invoice:
                         print(f"\n{'='*80}")
@@ -340,6 +325,38 @@ def main():
                         
                         # Display QR code
                         display_qr_code(invoice['payment_request'])
+                        
+                        # Ask user to confirm payment
+                        print(f"\n⏳ Waiting for payment confirmation...")
+                        print(f"📱 Scan the QR code above with your Lightning wallet")
+                        print(f"💰 Send {invoice['amount_sats']} sats to complete the transaction")
+                        
+                        # Wait for user confirmation
+                        input(f"\n✅ Press ENTER after you've sent the payment to confirm...")
+                        print(f"\n🎉 Thank you for your payment!")
+                    else:
+                        print(f"\n⚠️  No invoice generated - image cannot be displayed without payment")
+                        return
+                    
+                    # NOW display the image after payment confirmation
+                    print(f"\n{'='*80}")
+                    print(f"🖼️  Your Generated Image")
+                    print(f"{'='*80}")
+                    
+                    image_base64_list = result.get("image_base64", [])
+                    for i, base64_data in enumerate(image_base64_list, 1):
+                        if base64_data:
+                            print(f"\n🖼️  Image {i}:")
+                            print(f"   Base64 length: {len(base64_data)} characters")
+                            
+                            # Save the image
+                            filepath = save_base64_image(base64_data)
+                            if filepath:
+                                print(f"   ✅ Saved to: {filepath}")
+                                # Open the image
+                                open_image(filepath)
+                        else:
+                            print(f"\n❌ Image {i}: Failed to generate")
                 else:
                     print_json(result)
             
@@ -392,22 +409,7 @@ if __name__ == "__main__":
                 print(f"🎨 Model: {result['model']}")
                 print(f"⏱️  Processing time: {result['processing_time']:.2f}s")
                 
-                image_base64_list = result.get("image_base64", [])
-                for i, base64_data in enumerate(image_base64_list, 1):
-                    if base64_data:
-                        print(f"\n🖼️  Image {i}:")
-                        print(f"   Base64 length: {len(base64_data)} characters")
-                        
-                        # Automatically save the image
-                        filepath = save_base64_image(base64_data)
-                        if filepath:
-                            print(f"   ✅ Saved to: {filepath}")
-                            # Automatically open the image
-                            open_image(filepath)
-                    else:
-                        print(f"\n❌ Image {i}: Failed to generate")
-                
-                # Display invoice if available
+                # Display invoice FIRST if available
                 invoice = result.get("invoice")
                 if invoice:
                     print(f"\n{'='*80}")
@@ -422,6 +424,38 @@ if __name__ == "__main__":
                     
                     # Display QR code
                     display_qr_code(invoice['payment_request'])
+                    
+                    # Ask user to confirm payment
+                    print(f"\n⏳ Waiting for payment confirmation...")
+                    print(f"📱 Scan the QR code above with your Lightning wallet")
+                    print(f"💰 Send {invoice['amount_sats']} sats to complete the transaction")
+                    
+                    # Wait for user confirmation
+                    input(f"\n✅ Press ENTER after you've sent the payment to confirm...")
+                    print(f"\n🎉 Thank you for your payment!")
+                else:
+                    print(f"\n⚠️  No invoice generated - image cannot be displayed without payment")
+                    sys.exit(1)
+                
+                # NOW display the image after payment confirmation
+                print(f"\n{'='*80}")
+                print(f"🖼️  Your Generated Image")
+                print(f"{'='*80}")
+                
+                image_base64_list = result.get("image_base64", [])
+                for i, base64_data in enumerate(image_base64_list, 1):
+                    if base64_data:
+                        print(f"\n🖼️  Image {i}:")
+                        print(f"   Base64 length: {len(base64_data)} characters")
+                        
+                        # Save the image
+                        filepath = save_base64_image(base64_data)
+                        if filepath:
+                            print(f"   ✅ Saved to: {filepath}")
+                            # Open the image
+                            open_image(filepath)
+                    else:
+                        print(f"\n❌ Image {i}: Failed to generate")
             else:
                 print_json(result)
         
