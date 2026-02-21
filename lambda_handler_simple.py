@@ -22,6 +22,13 @@ def lambda_handler(event, context):
         # Parse request
         http_method = event.get('requestContext', {}).get('http', {}).get('method', 'GET')
         path = event.get('rawPath', '/')
+        
+        # Strip stage prefix if present (e.g., /prod/health -> /health)
+        if path.startswith('/prod/'):
+            path = path[5:]  # Remove '/prod'
+        elif path == '/prod':
+            path = '/'
+        
         body = event.get('body', '{}')
         
         # Parse JSON body if present
