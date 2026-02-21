@@ -2,6 +2,7 @@
 """
 Fulmine-Sparks API Client
 Simple client to interact with the Fulmine-Sparks serverless API
+Uses SeeDream 4.5 model for image generation
 """
 
 import requests
@@ -48,22 +49,17 @@ class FulmineSparkClient:
     def generate_image(
         self,
         prompt: str,
-        model: str = "stable-diffusion",
-        num_outputs: int = 1,
-        guidance_scale: float = 7.5,
-        num_inference_steps: int = 50
+        num_outputs: int = 1
     ) -> Dict[str, Any]:
-        """Generate an image from a text prompt"""
+        """Generate an image from a text prompt using SeeDream 4.5"""
         
         if not prompt:
             return {"error": "Prompt cannot be empty"}
         
         payload = {
             "prompt": prompt,
-            "model": model,
-            "num_outputs": num_outputs,
-            "guidance_scale": guidance_scale,
-            "num_inference_steps": num_inference_steps
+            "model": "seedream-4.5",
+            "num_outputs": num_outputs
         }
         
         try:
@@ -224,40 +220,23 @@ def main():
                 print_json(result)
             
             elif command in ["3", "generate"]:
-                print_header("Generate Image")
+                print_header("Generate Image with SeeDream 4.5")
                 
                 prompt = input("Enter prompt: ").strip()
                 if not prompt:
                     print("❌ Prompt cannot be empty!")
                     continue
                 
-                print("\nAvailable models:")
-                models_result = client.list_models()
-                models_list = models_result.get("models", [])
-                
-                if models_list:
-                    for i, model in enumerate(models_list, 1):
-                        print(f"  {i}. {model['name']} - {model['description']}")
-                
-                num_models = len(models_list)
-                model_choice = input(f"\nSelect model (1-{num_models}) [default: 1]: ").strip() or "1"
-                
-                # Try to parse as number first
+                num_outputs_input = input("Number of outputs [default: 1]: ").strip() or "1"
                 try:
-                    choice_idx = int(model_choice) - 1
-                    if 0 <= choice_idx < len(models_list):
-                        model = models_list[choice_idx]['name']
-                    else:
-                        # Invalid number, try as model name
-                        model = model_choice if model_choice in [m['name'] for m in models_list] else models_list[0]['name']
+                    num_outputs = int(num_outputs_input)
                 except ValueError:
-                    # Not a number, try as model name
-                    model = model_choice if model_choice in [m['name'] for m in models_list] else models_list[0]['name']
+                    num_outputs = 1
                 
-                print(f"\n⏳ Generating image with '{model}'...")
-                print("   (This may take 4-5 seconds...)\n")
+                print(f"\n⏳ Generating image with SeeDream 4.5...")
+                print("   (This may take 10-15 seconds...)\n")
                 
-                result = client.generate_image(prompt=prompt, model=model)
+                result = client.generate_image(prompt=prompt, num_outputs=num_outputs)
                 
                 if "error" in result:
                     print(f"❌ Error: {result['error']}")
@@ -330,18 +309,23 @@ if __name__ == "__main__":
         
         elif sys.argv[1] == "generate":
             if len(sys.argv) < 3:
-                print("Usage: python client.py generate '<prompt>' [model]")
+                print("Usage: python client.py generate '<prompt>' [num_outputs]")
                 sys.exit(1)
             
             prompt = sys.argv[2]
-            model = sys.argv[3] if len(sys.argv) > 3 else "stable-diffusion"
+            num_outputs = 1
+            if len(sys.argv) > 3:
+                try:
+                    num_outputs = int(sys.argv[3])
+                except ValueError:
+                    num_outputs = 1
             
-            print(f"⏳ Generating image: {prompt}")
-            result = client.generate_image(prompt=prompt, model=model)
+            print(f"⏳ Generating image with SeeDream 4.5: {prompt}")
+            result = client.generate_image(prompt=prompt, num_outputs=num_outputs)
             print_json(result)
         
         else:
-            print("Usage: python client.py [health|models|generate '<prompt>' [model]]")
+            print("Usage: python client.py [health|models|generate '<prompt>' [num_outputs]]")
             sys.exit(1)
     else:
         # Interactive mode
