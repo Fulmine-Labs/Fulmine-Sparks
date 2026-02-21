@@ -19,12 +19,14 @@ def lambda_handler(event, context):
     """
     
     try:
-        # Debug: print entire event
-        print(f"DEBUG: Full event keys: {list(event.keys())}")
-        print(f"DEBUG: requestContext keys: {list(event.get('requestContext', {}).keys())}")
-        
-        # Parse request
-        http_method = event.get('requestContext', {}).get('http', {}).get('method', 'GET')
+        # Parse request - try multiple fields for HTTP method
+        http_method = event.get('requestContext', {}).get('http', {}).get('method')
+        if not http_method:
+            http_method = event.get('httpMethod', 'GET')
+        if not http_method:
+            http_method = event.get('requestContext', {}).get('httpMethod', 'GET')
+        if not http_method:
+            http_method = 'GET'
         
         # Try different path fields
         path = event.get('rawPath', '/')
@@ -36,12 +38,11 @@ def lambda_handler(event, context):
             path = '/' + event['pathParameters']['proxy']
         
         # Debug: print raw event
-        print(f"DEBUG: rawPath={event.get('rawPath')}")
-        print(f"DEBUG: requestContext.http.path={event.get('requestContext', {}).get('http', {}).get('path')}")
+        print(f"DEBUG: httpMethod={event.get('httpMethod')}")
+        print(f"DEBUG: requestContext.httpMethod={event.get('requestContext', {}).get('httpMethod')}")
         print(f"DEBUG: requestContext.http.method={event.get('requestContext', {}).get('http', {}).get('method')}")
+        print(f"DEBUG: Final http_method={http_method}")
         print(f"DEBUG: pathParameters={event.get('pathParameters')}")
-        print(f"DEBUG: Final path before normalization={path}")
-        print(f"DEBUG: http_method={http_method}")
         
         # Normalize path - remove trailing slash except for root
         if path != '/' and path.endswith('/'):
