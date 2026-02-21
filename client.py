@@ -246,39 +246,20 @@ def main():
                     print(f"🎨 Model: {result['model']}")
                     print(f"⏱️  Processing time: {result['processing_time']:.2f}s")
                     
-                    image_urls = result.get("image_urls", [])
-                    for i, url in enumerate(image_urls, 1):
-                        print(f"\n🖼️  Image {i} URL:")
-                        print(f"   {url}")
-                        
-                        # Ask what to do with the image
-                        print("\nWhat would you like to do?")
-                        print("  1. Save image locally (from URL)")
-                        print("  2. Open in browser")
-                        print("  3. Both (save and open)")
-                        print("  4. Convert to base64")
-                        print("  5. Base64 + Save")
-                        print("  6. Skip")
-                        
-                        choice = input("Select (1-6) [default: 1]: ").strip() or "1"
-                        
-                        if choice in ["1", "3"]:
-                            filepath = save_image(url)
-                            if filepath and choice == "3":
+                    image_base64_list = result.get("image_base64", [])
+                    for i, base64_data in enumerate(image_base64_list, 1):
+                        if base64_data:
+                            print(f"\n🖼️  Image {i}:")
+                            print(f"   Base64 length: {len(base64_data)} characters")
+                            
+                            # Automatically save the image
+                            filepath = save_base64_image(base64_data)
+                            if filepath:
+                                print(f"   ✅ Saved to: {filepath}")
+                                # Automatically open the image
                                 open_image(filepath)
-                        elif choice == "2":
-                            open_in_browser(url)
-                        elif choice in ["4", "5"]:
-                            base64_data = url_to_base64(url)
-                            if base64_data:
-                                print(f"\n📋 Base64 Data (first 100 chars):")
-                                print(f"   {base64_data[:100]}...")
-                                print(f"\n💾 Full base64 data is {len(base64_data)} characters")
-                                
-                                if choice == "5":
-                                    filepath = save_base64_image(base64_data)
-                                    if filepath:
-                                        open_image(filepath)
+                        else:
+                            print(f"\n❌ Image {i}: Failed to generate")
                 else:
                     print_json(result)
             
@@ -322,7 +303,31 @@ if __name__ == "__main__":
             
             print(f"⏳ Generating image with SeeDream 4.5: {prompt}")
             result = client.generate_image(prompt=prompt, num_outputs=num_outputs)
-            print_json(result)
+            
+            if "error" in result:
+                print(f"❌ Error: {result['error']}")
+            elif "status" in result and result["status"] == "completed":
+                print("✅ Image generated successfully!")
+                print(f"📝 Prompt: {result['prompt']}")
+                print(f"🎨 Model: {result['model']}")
+                print(f"⏱️  Processing time: {result['processing_time']:.2f}s")
+                
+                image_base64_list = result.get("image_base64", [])
+                for i, base64_data in enumerate(image_base64_list, 1):
+                    if base64_data:
+                        print(f"\n🖼️  Image {i}:")
+                        print(f"   Base64 length: {len(base64_data)} characters")
+                        
+                        # Automatically save the image
+                        filepath = save_base64_image(base64_data)
+                        if filepath:
+                            print(f"   ✅ Saved to: {filepath}")
+                            # Automatically open the image
+                            open_image(filepath)
+                    else:
+                        print(f"\n❌ Image {i}: Failed to generate")
+            else:
+                print_json(result)
         
         else:
             print("Usage: python client.py [health|models|generate '<prompt>' [num_outputs]]")
