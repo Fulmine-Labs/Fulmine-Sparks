@@ -1,5 +1,16 @@
 # Getting Your Alby Hub API Token
 
+## 🎯 Quick Summary
+
+**Where to Find It**:
+1. Go to your Alby Hub dashboard
+2. Click **App Store** (in main menu)
+3. Click **"Connect"** or **"Add New App"**
+4. Select scopes: `invoices:create` + `invoices:read`
+5. Copy the token (shown only once!)
+
+---
+
 ## Step-by-Step Guide
 
 ### 1. Access Your Alby Hub Dashboard
@@ -10,17 +21,17 @@
 
 2. Log in with your credentials
 
-### 2. Navigate to Settings
+### 2. Navigate to App Store
 
-1. Click on **Settings** (usually in the top menu or sidebar)
-2. Look for **API** or **Developer** section
-3. You should see an option for "API Keys" or "Access Tokens"
+1. Click on **App Store** (in the main menu)
+2. Look for **"Connect"** or **"Add App"** button
+3. You should see an option to create a new connection
 
 ### 3. Create a New API Token
 
-1. Click **"Create New Token"** or **"Generate Token"**
+1. Click **"Connect"** or **"Add New App"**
 2. Give it a name like: `Fulmine-Sparks`
-3. Select the required scopes:
+3. Select the required scopes/permissions:
    - ✅ `invoices:create` - To create Lightning invoices
    - ✅ `invoices:read` - To check invoice status
 
