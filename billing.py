@@ -8,6 +8,104 @@ import requests
 import os
 from typing import Dict, Any, Optional
 from datetime import datetime
+import time
+
+
+class BitcoinPriceFetcher:
+    """Fetch real-time Bitcoin prices from multiple sources"""
+    
+    # Cache for price data (to avoid excessive API calls)
+    _price_cache = {
+        "price": None,
+        "timestamp": 0,
+        "cache_duration": 60  # Cache for 60 seconds
+    }
+    
+    @staticmethod
+    def get_btc_price_usd() -> float:
+        """
+        Get current Bitcoin price in USD
+        
+        Tries multiple sources in order:
+        1. CoinGecko API (free, no auth required)
+        2. Kraken API (free, no auth required)
+        3. Coinbase API (free, no auth required)
+        4. Fallback to cached price or default
+        
+        Returns:
+            BTC price in USD
+        """
+        # Check cache first
+        current_time = time.time()
+        if (BitcoinPriceFetcher._price_cache["price"] is not None and 
+            current_time - BitcoinPriceFetcher._price_cache["timestamp"] < 
+            BitcoinPriceFetcher._price_cache["cache_duration"]):
+            return BitcoinPriceFetcher._price_cache["price"]
+        
+        # Try CoinGecko API
+        try:
+            response = requests.get(
+                "https://api.coingecko.com/api/v3/simple/price",
+                params={"ids": "bitcoin", "vs_currencies": "usd"},
+                timeout=5
+            )
+            response.raise_for_status()
+            price = response.json()["bitcoin"]["usd"]
+            BitcoinPriceFetcher._price_cache["price"] = price
+            BitcoinPriceFetcher._price_cache["timestamp"] = current_time
+            print(f"✅ BTC price from CoinGecko: ${price:,.2f}")
+            return price
+        except Exception as e:
+            print(f"⚠️  CoinGecko failed: {str(e)}")
+        
+        # Try Kraken API
+        try:
+            response = requests.get(
+                "https://api.kraken.com/0/public/Ticker",
+                params={"pair": "XBTUSDT"},
+                timeout=5
+            )
+            response.raise_for_status()
+            data = response.json()
+            ticker_key = list(data["result"].keys())[0]
+            price = float(data["result"][ticker_key]["c"][0])
+            BitcoinPriceFetcher._price_cache["price"] = price
+            BitcoinPriceFetcher._price_cache["timestamp"] = current_time
+            print(f"✅ BTC price from Kraken: ${price:,.2f}")
+            return price
+        except Exception as e:
+            print(f"⚠️  Kraken failed: {str(e)}")
+        
+        # Try Coinbase API
+        try:
+            response = requests.get(
+                "https://api.coinbase.com/v2/prices/BTC-USD/spot",
+                timeout=5
+            )
+            response.raise_for_status()
+            price = float(response.json()["data"]["amount"])
+            BitcoinPriceFetcher._price_cache["price"] = price
+            BitcoinPriceFetcher._price_cache["timestamp"] = current_time
+            print(f"✅ BTC price from Coinbase: ${price:,.2f}")
+            return price
+        except Exception as e:
+            print(f"⚠️  Coinbase failed: {str(e)}")
+        
+        # Return cached price if available
+        if BitcoinPriceFetcher._price_cache["price"] is not None:
+            print(f"⚠️  Using cached BTC price: ${BitcoinPriceFetcher._price_cache['price']:,.2f}")
+            return BitcoinPriceFetcher._price_cache["price"]
+        
+        # Fallback to default price
+        default_price = 67000
+        print(f"⚠️  Using fallback BTC price: ${default_price:,.2f}")
+        return default_price
+    
+    @staticmethod
+    def clear_cache():
+        """Clear the price cache"""
+        BitcoinPriceFetcher._price_cache["price"] = None
+        BitcoinPriceFetcher._price_cache["timestamp"] = 0
 
 
 class AlbyBillingClient:
@@ -153,7 +251,7 @@ def calculate_image_price(num_images: int = 1, btc_price_usd: float = None) -> D
     
     Args:
         num_images: Number of images
-        btc_price_usd: Current BTC/USD price (for satoshi conversion)
+        btc_price_usd: Current BTC/USD price (optional, fetches real-time if not provided)
     
     Returns:
         Pricing breakdown including satoshi amount
@@ -167,9 +265,9 @@ def calculate_image_price(num_images: int = 1, btc_price_usd: float = None) -> D
     replicate_total_usd = replicate_cost_usd * num_images
     your_total_usd = your_price_usd * num_images
     
-    # Convert to satoshis
+    # Get real-time BTC price if not provided
     if btc_price_usd is None:
-        btc_price_usd = 42000  # Default fallback price
+        btc_price_usd = BitcoinPriceFetcher.get_btc_price_usd()
     
     # 1 BTC = 100,000,000 sats
     total_sats = int((your_total_usd / btc_price_usd) * 100_000_000)
