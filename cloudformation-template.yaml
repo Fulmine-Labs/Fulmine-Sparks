@@ -65,10 +65,21 @@ Resources:
       IntegrationType: AWS_PROXY
       IntegrationUri: !Sub 'arn:aws:apigatewayv2:${AWS::Region}:lambda:path/2015-03-31/functions/${FulmineSparksFunction.Arn}/invocations'
       PayloadFormatVersion: '2.0'
+      IntegrationMethod: POST
+
+  # Lambda Permission for API Gateway
+  LambdaApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FulmineSparksFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${FulmineSparksApi}/*/*'
 
   # API Gateway Route
   ApiRoute:
     Type: AWS::ApiGatewayV2::Route
+    DependsOn: LambdaApiPermission
     Properties:
       ApiId: !Ref FulmineSparksApi
       RouteKey: '$default'
@@ -81,15 +92,6 @@ Resources:
       ApiId: !Ref FulmineSparksApi
       StageName: prod
       AutoDeploy: true
-
-  # Lambda Permission for API Gateway
-  LambdaApiPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref FulmineSparksFunction
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${FulmineSparksApi}/*/*'
 
 Outputs:
   ApiEndpoint:
