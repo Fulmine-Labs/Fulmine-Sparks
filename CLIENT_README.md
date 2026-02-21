@@ -72,6 +72,26 @@ Available commands:
 Enter command (1-4): 
 ```
 
+### Image Saving & Display
+
+After generating an image, you'll be asked what to do with it:
+
+```
+What would you like to do?
+  1. Save image locally
+  2. Open in browser
+  3. Both (save and open)
+  4. Skip
+
+Select (1-4) [default: 1]: 
+```
+
+**Options:**
+- **Save locally** - Downloads image to `fulmine_images/` folder with timestamp
+- **Open in browser** - Opens image URL in your default browser
+- **Both** - Saves locally AND opens in your image viewer
+- **Skip** - Just shows the URL
+
 ### Example Session
 
 ```
@@ -136,36 +156,53 @@ Select model (1-2) [default: 1]: 1
    https://replicate.delivery/yhqm/NGhMaARAeHSEJaYLsAxh7Un76mMaVLIFEWfpUIhSuKVDnvJWA/out-0.png
 ```
 
+## 📁 Image Storage
+
+Generated images are automatically saved to a `fulmine_images/` folder in your working directory:
+
+```
+fulmine_images/
+├── image_20260221_055627.png
+├── image_20260221_055632.png
+└── image_20260221_055640.png
+```
+
+**Filename format:** `image_YYYYMMDD_HHMMSS.png`
+
+Each image is timestamped so you can easily organize and find them.
+
 ## 💻 Python API Usage
 
 You can also use the client as a library in your own Python code:
 
 ```python
-from client import FulmineSparkClient
+from client import FulmineSparkClient, save_image, open_image, open_in_browser
 
 # Create client
 client = FulmineSparkClient()
 
-# Check health
-health = client.health_check()
-print(health)
-
-# List models
-models = client.list_models()
-print(models)
-
 # Generate image
 result = client.generate_image(
     prompt="a beautiful sunset over mountains",
-    model="stable-diffusion",
-    num_outputs=1,
-    guidance_scale=7.5,
-    num_inference_steps=50
+    model="stable-diffusion"
 )
 
-if "error" not in result:
-    print(f"Image URL: {result['image_urls'][0]}")
-    print(f"Processing time: {result['processing_time']:.2f}s")
+if "error" not in result and result.get("status") == "completed":
+    url = result['image_urls'][0]
+    
+    # Option 1: Save locally
+    filepath = save_image(url)
+    # Image saved to: fulmine_images/image_20260221_055627.png
+    
+    # Option 2: Open in browser
+    open_in_browser(url)
+    
+    # Option 3: Open saved image in default viewer
+    if filepath:
+        open_image(filepath)
+    
+    # Option 4: Just get the URL
+    print(f"Image URL: {url}")
 ```
 
 ## 🎨 Image Generation Parameters
