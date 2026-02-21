@@ -109,10 +109,18 @@ def generate_image(body_data):
             return error_response(500, "REPLICATE_API_TOKEN not set")
         
         # Map model names to Replicate versions
-        # Versions verified from https://replicate.com/stability-ai
+        # Versions verified from https://replicate.com
         model_map = {
+            # Legacy models
             'stable-diffusion': 'stability-ai/stable-diffusion:ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4',
             'stable-diffusion-xl': 'stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc',
+            # Latest Flux models (state-of-the-art)
+            'flux-1.1-pro': 'black-forest-labs/flux-1.1-pro',
+            'flux-pro': 'black-forest-labs/flux-pro',
+            'flux-dev': 'black-forest-labs/flux-dev',
+            # Video models
+            'wan-2.5-t2v-fast': 'wan-video/wan-2.5-t2v-fast',
+            'wan-2.5-t2v': 'wan-video/wan-2.5-t2v',
         }
         
         model_version = model_map.get(model, model)
@@ -210,15 +218,59 @@ def list_models():
     """List available models."""
     try:
         models = [
+            # Legacy models
             {
                 "name": "stable-diffusion",
                 "description": "Stable Diffusion v1.5",
-                "version": "db21e45d3f7023abc9f30f5cc29eee38d2d9c0c7"
+                "category": "image",
+                "quality": "good"
             },
             {
                 "name": "stable-diffusion-xl",
                 "description": "Stable Diffusion XL",
-                "version": "39ed52f2a60c3b36b4fe38b18e56f1f66a14e8925afd339bab9d1260cbe5eca6"
+                "category": "image",
+                "quality": "very-good"
+            },
+            # Latest Flux models (state-of-the-art)
+            {
+                "name": "flux-1.1-pro",
+                "description": "FLUX 1.1 Pro - Fastest, best quality (RECOMMENDED)",
+                "category": "image",
+                "quality": "excellent",
+                "speed": "fast",
+                "cost": "$0.04 per image"
+            },
+            {
+                "name": "flux-pro",
+                "description": "FLUX Pro - State-of-the-art quality",
+                "category": "image",
+                "quality": "excellent",
+                "speed": "medium",
+                "cost": "$0.055 per image"
+            },
+            {
+                "name": "flux-dev",
+                "description": "FLUX Dev - Open-source, good quality",
+                "category": "image",
+                "quality": "very-good",
+                "speed": "fast"
+            },
+            # Video models
+            {
+                "name": "wan-2.5-t2v-fast",
+                "description": "WAN 2.5 Text-to-Video (Fast)",
+                "category": "video",
+                "quality": "excellent",
+                "speed": "fast",
+                "duration": "5-10 seconds"
+            },
+            {
+                "name": "wan-2.5-t2v",
+                "description": "WAN 2.5 Text-to-Video (High Quality)",
+                "category": "video",
+                "quality": "excellent",
+                "speed": "medium",
+                "duration": "5-10 seconds"
             }
         ]
         return success_response({
