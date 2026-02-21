@@ -7,7 +7,11 @@ Simple client to interact with the Fulmine-Sparks serverless API
 import requests
 import json
 import sys
+import os
+import webbrowser
+from pathlib import Path
 from typing import Optional, Dict, Any
+from datetime import datetime
 
 # API Configuration
 API_BASE_URL = "https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod"
@@ -84,6 +88,69 @@ def print_json(data: Dict[str, Any]):
     print(json.dumps(data, indent=2))
 
 
+def save_image(url: str, filename: Optional[str] = None) -> Optional[str]:
+    """Download and save image from URL"""
+    try:
+        # Create images directory if it doesn't exist
+        images_dir = Path("fulmine_images")
+        images_dir.mkdir(exist_ok=True)
+        
+        # Generate filename if not provided
+        if not filename:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"image_{timestamp}.png"
+        
+        filepath = images_dir / filename
+        
+        # Download image
+        print(f"⏳ Downloading image...")
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        
+        # Save to file
+        with open(filepath, 'wb') as f:
+            f.write(response.content)
+        
+        print(f"✅ Image saved to: {filepath}")
+        return str(filepath)
+    
+    except Exception as e:
+        print(f"❌ Error saving image: {str(e)}")
+        return None
+
+
+def open_image(filepath: str):
+    """Open image in default viewer"""
+    try:
+        filepath = Path(filepath)
+        if not filepath.exists():
+            print(f"❌ File not found: {filepath}")
+            return
+        
+        # Windows
+        if sys.platform == "win32":
+            os.startfile(filepath)
+        # macOS
+        elif sys.platform == "darwin":
+            os.system(f"open '{filepath}'")
+        # Linux
+        else:
+            os.system(f"xdg-open '{filepath}'")
+        
+        print(f"🖼️  Opening image...")
+    except Exception as e:
+        print(f"❌ Error opening image: {str(e)}")
+
+
+def open_in_browser(url: str):
+    """Open image URL in default browser"""
+    try:
+        print(f"🌐 Opening in browser...")
+        webbrowser.open(url)
+    except Exception as e:
+        print(f"❌ Error opening browser: {str(e)}")
+
+
 def main():
     """Main CLI interface"""
     
@@ -147,9 +214,27 @@ def main():
                     print(f"\n📝 Prompt: {result['prompt']}")
                     print(f"🎨 Model: {result['model']}")
                     print(f"⏱️  Processing time: {result['processing_time']:.2f}s")
-                    print(f"\n🖼️  Image URL:")
-                    for url in result.get("image_urls", []):
+                    
+                    image_urls = result.get("image_urls", [])
+                    for i, url in enumerate(image_urls, 1):
+                        print(f"\n🖼️  Image {i} URL:")
                         print(f"   {url}")
+                        
+                        # Ask what to do with the image
+                        print("\nWhat would you like to do?")
+                        print("  1. Save image locally")
+                        print("  2. Open in browser")
+                        print("  3. Both (save and open)")
+                        print("  4. Skip")
+                        
+                        choice = input("Select (1-4) [default: 1]: ").strip() or "1"
+                        
+                        if choice in ["1", "3"]:
+                            filepath = save_image(url)
+                            if filepath and choice == "3":
+                                open_image(filepath)
+                        elif choice == "2":
+                            open_in_browser(url)
                 else:
                     print_json(result)
             
