@@ -198,16 +198,17 @@ def generate_image(body_data):
                 
                 processing_time = time.time() - start_time
                 
+                # Start with basic response (NO image yet)
                 result = {
                     "status": "completed",
                     "prompt": prompt,
                     "model": model,
-                    "image_base64": image_base64,
                     "processing_time": processing_time,
                     "timestamp": datetime.now().isoformat()
                 }
                 
-                # Add Lightning invoice if billing is enabled
+                # Create Lightning invoice FIRST
+                invoice_created = False
                 if BILLING_ENABLED:
                     try:
                         # Check if ALBY_NWC_URL is set
@@ -242,6 +243,7 @@ def generate_image(body_data):
                                     "qr_code_png": invoice_result.get("qr_code_png"),
                                     "qr_code_svg": invoice_result.get("qr_code_svg")
                                 }
+                                invoice_created = True
                                 print(f"✅ Invoice created: {pricing['total_sats']} sats")
                             else:
                                 print(f"❌ Invoice creation failed: {invoice_result.get('error')}")
@@ -249,6 +251,14 @@ def generate_image(body_data):
                         print(f"❌ Error creating invoice: {str(e)}")
                         import traceback
                         traceback.print_exc()
+                
+                # ONLY include image if invoice was successfully created
+                if invoice_created:
+                    result["image_base64"] = image_base64
+                    print(f"✅ Image included in response (payment required)")
+                else:
+                    print(f"⚠️  Image NOT included - invoice creation failed")
+                    result["error"] = "Payment invoice could not be created. Image not available."
                 
                 print(f"Image generated in {processing_time:.1f}s")
                 return success_response(result)
