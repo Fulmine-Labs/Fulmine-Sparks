@@ -109,8 +109,9 @@ def generate_image(body_data):
             return error_response(500, "REPLICATE_API_TOKEN not set")
         
         # Map model names to Replicate versions
+        # Using latest stable versions
         model_map = {
-            'stable-diffusion': 'stability-ai/stable-diffusion:db21e45d3f7023abc9f30f5cc29eee38d2d9c0c7',
+            'stable-diffusion': 'stability-ai/stable-diffusion:ac732df83cea7fff18b6b7c6b94b60975d7674290ff3130973c893d41548f986',
             'stable-diffusion-xl': 'stability-ai/stable-diffusion-xl:39ed52f2a60c3b36b4fe38b18e56f1f66a14e8925afd339bab9d1260cbe5eca6',
         }
         
