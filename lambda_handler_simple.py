@@ -19,38 +19,8 @@ def lambda_handler(event, context):
     """
     
     try:
-        # Parse request - try multiple fields for HTTP method
-        http_method = event.get('requestContext', {}).get('http', {}).get('method')
-        if not http_method:
-            http_method = event.get('httpMethod', 'GET')
-        if not http_method:
-            http_method = event.get('requestContext', {}).get('httpMethod', 'GET')
-        if not http_method:
-            http_method = 'GET'
-        
-        # Try different path fields
-        path = event.get('rawPath', '/')
-        if not path or path == '/':
-            path = event.get('requestContext', {}).get('http', {}).get('path', '/')
-        
-        # Also try path parameter from proxy
-        if 'proxy' in event.get('pathParameters', {}):
-            path = '/' + event['pathParameters']['proxy']
-        
-        # Debug: print raw event
-        print(f"DEBUG: httpMethod={event.get('httpMethod')}")
-        print(f"DEBUG: requestContext.httpMethod={event.get('requestContext', {}).get('httpMethod')}")
-        print(f"DEBUG: requestContext.http.method={event.get('requestContext', {}).get('http', {}).get('method')}")
-        print(f"DEBUG: Final http_method={http_method}")
-        print(f"DEBUG: pathParameters={event.get('pathParameters')}")
-        
-        # Normalize path - remove trailing slash except for root
-        if path != '/' and path.endswith('/'):
-            path = path[:-1]
-        
-        print(f"DEBUG: Final path after normalization={path}")
-        
-        body = event.get('body', '{}')
+        # Parse request
+        body = event.get('body', '')
         
         # Parse JSON body if present
         try:
@@ -60,6 +30,26 @@ def lambda_handler(event, context):
                 body_data = body
         except json.JSONDecodeError:
             body_data = {}
+        
+        # Determine HTTP method: if there's a body, it's POST; otherwise GET
+        # (workaround for API Gateway not passing method correctly)
+        http_method = 'POST' if body_data else 'GET'
+        
+        # Try to get actual method from event (in case it's available)
+        actual_method = event.get('requestContext', {}).get('http', {}).get('method')
+        if not actual_method:
+            actual_method = event.get('httpMethod')
+        if actual_method:
+            http_method = actual_method
+        
+        # Get path from proxy parameter
+        path = '/'
+        if 'proxy' in event.get('pathParameters', {}):
+            path = '/' + event['pathParameters']['proxy']
+        
+        # Normalize path - remove trailing slash except for root
+        if path != '/' and path.endswith('/'):
+            path = path[:-1]
         
         print(f"Request: {http_method} {path}")
         
