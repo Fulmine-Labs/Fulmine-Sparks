@@ -21,17 +21,21 @@ def lambda_handler(event, context):
     try:
         # Parse request
         http_method = event.get('requestContext', {}).get('http', {}).get('method', 'GET')
+        
+        # Try different path fields
         path = event.get('rawPath', '/')
+        if not path or path == '/':
+            path = event.get('requestContext', {}).get('http', {}).get('path', '/')
+        
+        # Also try path parameter from proxy
+        if 'proxy' in event.get('pathParameters', {}):
+            path = '/' + event['pathParameters']['proxy']
         
         # Debug: print raw event
-        print(f"DEBUG: Full event: {json.dumps(event, default=str)}")
-        print(f"DEBUG: rawPath={path}")
-        
-        # Strip stage prefix if present (e.g., /prod/health -> /health)
-        if path.startswith('/prod/'):
-            path = path[5:]  # Remove '/prod'
-        elif path == '/prod':
-            path = '/'
+        print(f"DEBUG: rawPath={event.get('rawPath')}")
+        print(f"DEBUG: requestContext.http.path={event.get('requestContext', {}).get('http', {}).get('path')}")
+        print(f"DEBUG: pathParameters={event.get('pathParameters')}")
+        print(f"DEBUG: Final path={path}")
         
         body = event.get('body', '{}')
         
