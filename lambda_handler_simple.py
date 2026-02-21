@@ -118,6 +118,9 @@ def generate_image(body_data):
             'flux-1.1-pro': 'black-forest-labs/flux-1.1-pro',
             'flux-pro': 'black-forest-labs/flux-pro',
             'flux-dev': 'black-forest-labs/flux-dev',
+            # Bytedance Seedream (excellent quality, 4K support)
+            'seedream-4.5': 'bytedance/seedream-4.5',
+            'seedream-4': 'bytedance/seedream-4',
             # Video models
             'wan-2.5-t2v-fast': 'wan-video/wan-2.5-t2v-fast',
             'wan-2.5-t2v': 'wan-video/wan-2.5-t2v',
@@ -254,6 +257,24 @@ def list_models():
                 "category": "image",
                 "quality": "very-good",
                 "speed": "fast"
+            },
+            # Bytedance Seedream (excellent quality, 4K support)
+            {
+                "name": "seedream-4.5",
+                "description": "Seedream 4.5 - Cinematic quality, 4K support, strong spatial reasoning",
+                "category": "image",
+                "quality": "excellent",
+                "speed": "medium",
+                "cost": "$0.04 per image",
+                "max_resolution": "4K (4096px)"
+            },
+            {
+                "name": "seedream-4",
+                "description": "Seedream 4 - High quality, multi-reference, image editing",
+                "category": "image",
+                "quality": "excellent",
+                "speed": "medium",
+                "cost": "$0.04 per image"
             },
             # Video models
             {
