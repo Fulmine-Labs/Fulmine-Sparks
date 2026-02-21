@@ -19,6 +19,10 @@ def lambda_handler(event, context):
     """
     
     try:
+        # Debug: print entire event
+        print(f"DEBUG: Full event keys: {list(event.keys())}")
+        print(f"DEBUG: requestContext keys: {list(event.get('requestContext', {}).keys())}")
+        
         # Parse request
         http_method = event.get('requestContext', {}).get('http', {}).get('method', 'GET')
         
