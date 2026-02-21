@@ -14,6 +14,14 @@ from datetime import datetime
 # Add project to path
 sys.path.insert(0, os.path.dirname(__file__))
 
+# Import billing module
+try:
+    from billing import AlbyBillingClient, calculate_image_price
+    BILLING_ENABLED = True
+except ImportError:
+    BILLING_ENABLED = False
+    print("Warning: Billing module not available")
+
 def lambda_handler(event, context):
     """
     AWS Lambda handler for HTTP requests.
@@ -198,6 +206,41 @@ def generate_image(body_data):
                     "processing_time": processing_time,
                     "timestamp": datetime.now().isoformat()
                 }
+                
+                # Add Lightning invoice if billing is enabled
+                if BILLING_ENABLED:
+                    try:
+                        # Calculate pricing with 25% markup
+                        pricing = calculate_image_price(num_outputs)
+                        
+                        # Create invoice
+                        billing_client = AlbyBillingClient()
+                        invoice_result = billing_client.create_invoice(
+                            amount_sats=pricing['total_sats'],
+                            description=f"SeeDream 4.5 - {num_outputs} image(s): {prompt[:50]}",
+                            metadata={
+                                "prompt": prompt,
+                                "model": "seedream-4.5",
+                                "num_images": num_outputs,
+                                "price_usd": pricing['your_price_usd']
+                            }
+                        )
+                        
+                        if "error" not in invoice_result:
+                            result["invoice"] = {
+                                "payment_request": invoice_result.get("payment_request"),
+                                "payment_hash": invoice_result.get("payment_hash"),
+                                "amount_sats": pricing['total_sats'],
+                                "price_usd": pricing['your_price_usd'],
+                                "expires_at": invoice_result.get("expires_at"),
+                                "qr_code_png": invoice_result.get("qr_code_png"),
+                                "qr_code_svg": invoice_result.get("qr_code_svg")
+                            }
+                            print(f"Invoice created: {pricing['total_sats']} sats")
+                        else:
+                            print(f"Invoice creation failed: {invoice_result.get('error')}")
+                    except Exception as e:
+                        print(f"Error creating invoice: {str(e)}")
                 
                 print(f"Image generated in {processing_time:.1f}s")
                 return success_response(result)

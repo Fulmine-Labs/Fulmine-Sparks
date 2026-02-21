@@ -260,6 +260,20 @@ def main():
                                 open_image(filepath)
                         else:
                             print(f"\n❌ Image {i}: Failed to generate")
+                    
+                    # Display invoice if available
+                    invoice = result.get("invoice")
+                    if invoice:
+                        print(f"\n{'='*80}")
+                        print(f"💰 Payment Required (Bitcoin Lightning)")
+                        print(f"{'='*80}")
+                        print(f"Amount:        {invoice['amount_sats']:,} sats (${invoice['price_usd']:.4f})")
+                        print(f"Expires:       {invoice['expires_at']}")
+                        print(f"\n⚡ Lightning Invoice (BOLT11):")
+                        print(f"{invoice['payment_request']}")
+                        print(f"\n📱 Scan QR code or paste invoice into your Lightning wallet")
+                        print(f"Payment Hash: {invoice['payment_hash'][:16]}...")
+                        print(f"{'='*80}")
                 else:
                     print_json(result)
             
@@ -326,6 +340,20 @@ if __name__ == "__main__":
                             open_image(filepath)
                     else:
                         print(f"\n❌ Image {i}: Failed to generate")
+                
+                # Display invoice if available
+                invoice = result.get("invoice")
+                if invoice:
+                    print(f"\n{'='*80}")
+                    print(f"💰 Payment Required (Bitcoin Lightning)")
+                    print(f"{'='*80}")
+                    print(f"Amount:        {invoice['amount_sats']:,} sats (${invoice['price_usd']:.4f})")
+                    print(f"Expires:       {invoice['expires_at']}")
+                    print(f"\n⚡ Lightning Invoice (BOLT11):")
+                    print(f"{invoice['payment_request']}")
+                    print(f"\n📱 Scan QR code or paste invoice into your Lightning wallet")
+                    print(f"Payment Hash: {invoice['payment_hash'][:16]}...")
+                    print(f"{'='*80}")
             else:
                 print_json(result)
         
