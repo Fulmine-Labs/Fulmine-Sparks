@@ -78,18 +78,22 @@ After generating an image, you'll be asked what to do with it:
 
 ```
 What would you like to do?
-  1. Save image locally
+  1. Save image locally (from URL)
   2. Open in browser
   3. Both (save and open)
-  4. Skip
+  4. Convert to base64
+  5. Base64 + Save
+  6. Skip
 
-Select (1-4) [default: 1]: 
+Select (1-6) [default: 1]: 
 ```
 
 **Options:**
 - **Save locally** - Downloads image to `fulmine_images/` folder with timestamp
 - **Open in browser** - Opens image URL in your default browser
 - **Both** - Saves locally AND opens in your image viewer
+- **Convert to base64** - Downloads image and converts to base64 encoding
+- **Base64 + Save** - Converts to base64 AND saves the decoded image
 - **Skip** - Just shows the URL
 
 ### Example Session
@@ -171,12 +175,47 @@ fulmine_images/
 
 Each image is timestamped so you can easily organize and find them.
 
+## 🔐 Base64 Encoding
+
+The client supports base64 image encoding for secure transfer and storage:
+
+```python
+from client import url_to_base64, save_base64_image
+
+# Convert image URL to base64
+base64_data = url_to_base64("https://example.com/image.png")
+
+# Save base64-encoded image
+filepath = save_base64_image(base64_data)
+```
+
+**Base64 Statistics:**
+- **Size:** ~1.27 MB per image (text representation)
+- **Format:** Standard base64 encoding
+- **Use cases:** 
+  - Embedding images in JSON/API responses
+  - Secure transfer over networks
+  - Database storage
+  - Email attachments
+
+**Example base64 data:**
+```
+iVBORw0KGgoAAAANSUhEUgAAAwAAAAMACAIAAAAc45fZAAEAAElEQVR4nEz9W5Z1y40zigFkrFT9Z7hJ...
+```
+
 ## 💻 Python API Usage
 
 You can also use the client as a library in your own Python code:
 
 ```python
-from client import FulmineSparkClient, save_image, open_image, open_in_browser
+from client import (
+    FulmineSparkClient, 
+    save_image, 
+    open_image, 
+    open_in_browser,
+    url_to_base64,
+    save_base64_image
+)
 
 # Create client
 client = FulmineSparkClient()
@@ -190,7 +229,7 @@ result = client.generate_image(
 if "error" not in result and result.get("status") == "completed":
     url = result['image_urls'][0]
     
-    # Option 1: Save locally
+    # Option 1: Save locally from URL
     filepath = save_image(url)
     # Image saved to: fulmine_images/image_20260221_055627.png
     
@@ -201,7 +240,15 @@ if "error" not in result and result.get("status") == "completed":
     if filepath:
         open_image(filepath)
     
-    # Option 4: Just get the URL
+    # Option 4: Convert to base64
+    base64_data = url_to_base64(url)
+    # base64_data is ~1.27 MB string
+    
+    # Option 5: Save base64-encoded image
+    if base64_data:
+        filepath = save_base64_image(base64_data)
+    
+    # Option 6: Just get the URL
     print(f"Image URL: {url}")
 ```
 
