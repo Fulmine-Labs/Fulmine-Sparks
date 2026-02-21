@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import asyncio
+import base64
 from datetime import datetime
 
 # Add project to path
@@ -175,13 +176,25 @@ def generate_image(body_data):
                 output = prediction.get('output', [])
                 image_urls = output if isinstance(output, list) else [output]
                 
+                # Convert URLs to base64
+                image_base64 = []
+                for url in image_urls:
+                    try:
+                        img_response = requests.get(url, timeout=30)
+                        img_response.raise_for_status()
+                        b64_data = base64.b64encode(img_response.content).decode('utf-8')
+                        image_base64.append(b64_data)
+                    except Exception as e:
+                        print(f"Error converting image to base64: {str(e)}")
+                        image_base64.append(None)
+                
                 processing_time = time.time() - start_time
                 
                 result = {
                     "status": "completed",
                     "prompt": prompt,
                     "model": model,
-                    "image_urls": image_urls,
+                    "image_base64": image_base64,
                     "processing_time": processing_time,
                     "timestamp": datetime.now().isoformat()
                 }
