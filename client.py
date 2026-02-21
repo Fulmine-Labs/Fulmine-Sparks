@@ -233,19 +233,26 @@ def main():
                 
                 print("\nAvailable models:")
                 models_result = client.list_models()
-                if "models" in models_result:
-                    for i, model in enumerate(models_result["models"], 1):
+                models_list = models_result.get("models", [])
+                
+                if models_list:
+                    for i, model in enumerate(models_list, 1):
                         print(f"  {i}. {model['name']} - {model['description']}")
                 
-                model_choice = input("\nSelect model (1-2) [default: 1]: ").strip() or "1"
+                num_models = len(models_list)
+                model_choice = input(f"\nSelect model (1-{num_models}) [default: 1]: ").strip() or "1"
                 
-                models_list = models_result.get("models", [])
-                if model_choice == "1" or model_choice == "stable-diffusion":
-                    model = "stable-diffusion"
-                elif model_choice == "2" or model_choice == "stable-diffusion-xl":
-                    model = "stable-diffusion-xl"
-                else:
-                    model = "stable-diffusion"
+                # Try to parse as number first
+                try:
+                    choice_idx = int(model_choice) - 1
+                    if 0 <= choice_idx < len(models_list):
+                        model = models_list[choice_idx]['name']
+                    else:
+                        # Invalid number, try as model name
+                        model = model_choice if model_choice in [m['name'] for m in models_list] else models_list[0]['name']
+                except ValueError:
+                    # Not a number, try as model name
+                    model = model_choice if model_choice in [m['name'] for m in models_list] else models_list[0]['name']
                 
                 print(f"\n⏳ Generating image with '{model}'...")
                 print("   (This may take 4-5 seconds...)\n")
