@@ -111,19 +111,8 @@ def generate_image(body_data):
         # Map model names to Replicate versions
         # Versions verified from https://replicate.com
         model_map = {
-            # Legacy models
-            'stable-diffusion': 'stability-ai/stable-diffusion:ac732df83cea7fff18b8472768c88ad041fa750ff7682a21affe81863cbe77e4',
-            'stable-diffusion-xl': 'stability-ai/sdxl:7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc',
-            # Latest Flux models (state-of-the-art)
-            'flux-1.1-pro': 'black-forest-labs/flux-1.1-pro',
-            'flux-pro': 'black-forest-labs/flux-pro',
-            'flux-dev': 'black-forest-labs/flux-dev',
-            # Bytedance Seedream (excellent quality, 4K support)
+            # Bytedance Seedream 4.5 (excellent quality, 4K support)
             'seedream-4.5': 'bytedance/seedream-4.5',
-            'seedream-4': 'bytedance/seedream-4',
-            # Video models
-            'wan-2.5-t2v-fast': 'wan-video/wan-2.5-t2v-fast',
-            'wan-2.5-t2v': 'wan-video/wan-2.5-t2v',
         }
         
         model_version = model_map.get(model, model)
@@ -221,44 +210,7 @@ def list_models():
     """List available models."""
     try:
         models = [
-            # Legacy models
-            {
-                "name": "stable-diffusion",
-                "description": "Stable Diffusion v1.5",
-                "category": "image",
-                "quality": "good"
-            },
-            {
-                "name": "stable-diffusion-xl",
-                "description": "Stable Diffusion XL",
-                "category": "image",
-                "quality": "very-good"
-            },
-            # Latest Flux models (state-of-the-art)
-            {
-                "name": "flux-1.1-pro",
-                "description": "FLUX 1.1 Pro - Fastest, best quality (RECOMMENDED)",
-                "category": "image",
-                "quality": "excellent",
-                "speed": "fast",
-                "cost": "$0.04 per image"
-            },
-            {
-                "name": "flux-pro",
-                "description": "FLUX Pro - State-of-the-art quality",
-                "category": "image",
-                "quality": "excellent",
-                "speed": "medium",
-                "cost": "$0.055 per image"
-            },
-            {
-                "name": "flux-dev",
-                "description": "FLUX Dev - Open-source, good quality",
-                "category": "image",
-                "quality": "very-good",
-                "speed": "fast"
-            },
-            # Bytedance Seedream (excellent quality, 4K support)
+            # Bytedance Seedream 4.5 (excellent quality, 4K support)
             {
                 "name": "seedream-4.5",
                 "description": "Seedream 4.5 - Cinematic quality, 4K support, strong spatial reasoning",
@@ -267,31 +219,6 @@ def list_models():
                 "speed": "medium",
                 "cost": "$0.04 per image",
                 "max_resolution": "4K (4096px)"
-            },
-            {
-                "name": "seedream-4",
-                "description": "Seedream 4 - High quality, multi-reference, image editing",
-                "category": "image",
-                "quality": "excellent",
-                "speed": "medium",
-                "cost": "$0.04 per image"
-            },
-            # Video models
-            {
-                "name": "wan-2.5-t2v-fast",
-                "description": "WAN 2.5 Text-to-Video (Fast)",
-                "category": "video",
-                "quality": "excellent",
-                "speed": "fast",
-                "duration": "5-10 seconds"
-            },
-            {
-                "name": "wan-2.5-t2v",
-                "description": "WAN 2.5 Text-to-Video (High Quality)",
-                "category": "video",
-                "quality": "excellent",
-                "speed": "medium",
-                "duration": "5-10 seconds"
             }
         ]
         return success_response({
