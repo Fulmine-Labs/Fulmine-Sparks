@@ -9,6 +9,7 @@ import json
 import sys
 import os
 import webbrowser
+import base64
 from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime
@@ -151,6 +152,50 @@ def open_in_browser(url: str):
         print(f"❌ Error opening browser: {str(e)}")
 
 
+def url_to_base64(url: str) -> Optional[str]:
+    """Download image from URL and convert to base64"""
+    try:
+        print(f"⏳ Downloading image...")
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        
+        # Convert to base64
+        image_data = base64.b64encode(response.content).decode('utf-8')
+        print(f"✅ Image converted to base64 ({len(image_data)} characters)")
+        return image_data
+    
+    except Exception as e:
+        print(f"❌ Error converting to base64: {str(e)}")
+        return None
+
+
+def save_base64_image(base64_data: str, filename: Optional[str] = None) -> Optional[str]:
+    """Save base64-encoded image to file"""
+    try:
+        # Create images directory if it doesn't exist
+        images_dir = Path("fulmine_images")
+        images_dir.mkdir(exist_ok=True)
+        
+        # Generate filename if not provided
+        if not filename:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"image_{timestamp}.png"
+        
+        filepath = images_dir / filename
+        
+        # Decode base64 and save
+        image_data = base64.b64decode(base64_data)
+        with open(filepath, 'wb') as f:
+            f.write(image_data)
+        
+        print(f"✅ Image saved to: {filepath}")
+        return str(filepath)
+    
+    except Exception as e:
+        print(f"❌ Error saving base64 image: {str(e)}")
+        return None
+
+
 def main():
     """Main CLI interface"""
     
@@ -222,12 +267,14 @@ def main():
                         
                         # Ask what to do with the image
                         print("\nWhat would you like to do?")
-                        print("  1. Save image locally")
+                        print("  1. Save image locally (from URL)")
                         print("  2. Open in browser")
                         print("  3. Both (save and open)")
-                        print("  4. Skip")
+                        print("  4. Convert to base64")
+                        print("  5. Base64 + Save")
+                        print("  6. Skip")
                         
-                        choice = input("Select (1-4) [default: 1]: ").strip() or "1"
+                        choice = input("Select (1-6) [default: 1]: ").strip() or "1"
                         
                         if choice in ["1", "3"]:
                             filepath = save_image(url)
@@ -235,6 +282,17 @@ def main():
                                 open_image(filepath)
                         elif choice == "2":
                             open_in_browser(url)
+                        elif choice in ["4", "5"]:
+                            base64_data = url_to_base64(url)
+                            if base64_data:
+                                print(f"\n📋 Base64 Data (first 100 chars):")
+                                print(f"   {base64_data[:100]}...")
+                                print(f"\n💾 Full base64 data is {len(base64_data)} characters")
+                                
+                                if choice == "5":
+                                    filepath = save_base64_image(base64_data)
+                                    if filepath:
+                                        open_image(filepath)
                 else:
                     print_json(result)
             
