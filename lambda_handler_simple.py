@@ -90,7 +90,7 @@ def lambda_handler(event, context):
 
 
 def generate_image(body_data):
-    """Generate an image using Replicate."""
+    """Generate an image using Replicate API."""
     try:
         prompt = body_data.get('prompt', '')
         model = body_data.get('model', 'stable-diffusion')
@@ -103,15 +103,12 @@ def generate_image(body_data):
         
         print(f"Generating image for: {prompt}")
         
-        # Import replicate here to avoid import errors
-        import replicate
-        
         # Get API token
         api_token = os.environ.get('REPLICATE_API_TOKEN')
         if not api_token:
             return error_response(500, "REPLICATE_API_TOKEN not set")
         
-        # Map model names
+        # Map model names to Replicate versions
         model_map = {
             'stable-diffusion': 'stability-ai/stable-diffusion:db21e45d3f7023abc9f30f5cc29eee38d2d9c0c7',
             'stable-diffusion-xl': 'stability-ai/stable-diffusion-xl:39ed52f2a60c3b36b4fe38b18e56f1f66a14e8925afd339bab9d1260cbe5eca6',
@@ -119,40 +116,87 @@ def generate_image(body_data):
         
         model_version = model_map.get(model, model)
         
-        # Call Replicate
+        # Call Replicate API directly using requests
+        import requests
         import time
+        
         start_time = time.time()
         
-        output = replicate.run(
-            model_version,
-            input={
+        # Create prediction
+        headers = {
+            "Authorization": f"Token {api_token}",
+            "Content-Type": "application/json"
+        }
+        
+        prediction_data = {
+            "version": model_version,
+            "input": {
                 "prompt": prompt,
                 "num_outputs": num_outputs,
                 "guidance_scale": guidance_scale,
                 "num_inference_steps": num_inference_steps,
-            },
-            api_token=api_token
-        )
-        
-        processing_time = time.time() - start_time
-        
-        # Convert output to list if needed
-        if isinstance(output, str):
-            image_urls = [output]
-        else:
-            image_urls = list(output) if output else []
-        
-        result = {
-            "status": "completed",
-            "prompt": prompt,
-            "model": model,
-            "image_urls": image_urls,
-            "processing_time": processing_time,
-            "timestamp": datetime.now().isoformat()
+            }
         }
         
-        print(f"Image generated in {processing_time:.1f}s")
-        return success_response(result)
+        # Start prediction
+        response = requests.post(
+            "https://api.replicate.com/v1/predictions",
+            json=prediction_data,
+            headers=headers,
+            timeout=30
+        )
+        
+        if response.status_code != 201:
+            return error_response(500, f"Replicate API error: {response.text}")
+        
+        prediction = response.json()
+        prediction_id = prediction.get('id')
+        
+        # Poll for completion (with timeout)
+        max_wait = 600  # 10 minutes
+        poll_interval = 2
+        elapsed = 0
+        
+        while elapsed < max_wait:
+            response = requests.get(
+                f"https://api.replicate.com/v1/predictions/{prediction_id}",
+                headers=headers,
+                timeout=30
+            )
+            
+            if response.status_code != 200:
+                return error_response(500, f"Replicate API error: {response.text}")
+            
+            prediction = response.json()
+            status = prediction.get('status')
+            
+            if status == 'succeeded':
+                output = prediction.get('output', [])
+                image_urls = output if isinstance(output, list) else [output]
+                
+                processing_time = time.time() - start_time
+                
+                result = {
+                    "status": "completed",
+                    "prompt": prompt,
+                    "model": model,
+                    "image_urls": image_urls,
+                    "processing_time": processing_time,
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+                print(f"Image generated in {processing_time:.1f}s")
+                return success_response(result)
+            
+            elif status == 'failed':
+                error_msg = prediction.get('error', 'Unknown error')
+                return error_response(500, f"Image generation failed: {error_msg}")
+            
+            # Still processing
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+        
+        return error_response(500, "Image generation timed out")
         
     except Exception as e:
         print(f"Error: {str(e)}")
