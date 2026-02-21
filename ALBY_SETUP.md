@@ -1,6 +1,10 @@
-# Getting Your Alby Hub API Token
+# Getting Your Alby Hub NWC Connection String
 
 ## 🎯 Quick Summary
+
+**What You Need**:
+- A **NWC Connection String** (Nostr Wallet Connect)
+- This is what Alby Hub uses for API authentication
 
 **Where to Find It**:
 1. Go to your Alby Hub dashboard
@@ -10,7 +14,8 @@
 5. Select permissions:
    - ✅ **Create invoices** (required)
    - ✅ **Look up Status of Invoices** (required)
-6. Copy the token (shown only once!)
+6. Copy the **NWC Connection String** (shown only once!)
+   - It looks like: `nostr+walletconnect://...`
 
 ---
 
@@ -41,18 +46,20 @@
 
 4. Click **"Create"** or **"Connect"**
 
-### 4. Copy Your Token
+### 4. Copy Your NWC Connection String
 
-⚠️ **IMPORTANT**: The token will only be shown ONCE!
+⚠️ **IMPORTANT**: The connection string will only be shown ONCE!
 
-1. Copy the entire token string
+1. Copy the entire **NWC Connection String**
 2. Save it somewhere safe (password manager, secure note, etc.)
-3. Do NOT share this token with anyone
+3. Do NOT share this string with anyone
 
-The token will look something like:
+The NWC Connection String will look something like:
 ```
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+nostr+walletconnect://abc123def456...?relay=wss://relay.getalby.com/v1&secret=xyz789
 ```
+
+**This is your API token** - it's what you'll use to authenticate with Alby Hub!
 
 ## Setting Up in AWS Lambda
 
@@ -65,8 +72,9 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4
 5. Click **Edit**
 6. Click **Add environment variable**
 7. Set:
-   - **Key**: `ALBY_API_TOKEN`
-   - **Value**: `[paste your token here]`
+   - **Key**: `ALBY_NWC_URL`
+   - **Value**: `[paste your NWC Connection String here]`
+   - Example: `nostr+walletconnect://abc123...?relay=wss://relay.getalby.com/v1&secret=xyz789`
 8. Click **Save**
 
 ### Option 2: AWS CLI
@@ -74,7 +82,7 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4
 ```bash
 aws lambda update-function-configuration \
   --function-name fulmine-sparks \
-  --environment Variables={ALBY_API_TOKEN=your_token_here} \
+  --environment Variables={ALBY_NWC_URL=nostr+walletconnect://...} \
   --region us-east-2
 ```
 
@@ -186,11 +194,8 @@ EOF
 ## Environment Variables Reference
 
 ```bash
-# Required
-ALBY_API_TOKEN="your_token_here"
-
-# Optional (if using self-hosted Alby Hub)
-ALBY_HUB_URL="https://your-alby-hub.com"
+# Required - Your NWC Connection String from Alby Hub
+ALBY_NWC_URL="nostr+walletconnect://abc123...?relay=wss://relay.getalby.com/v1&secret=xyz789"
 
 # Optional (for custom BTC price)
 BTC_PRICE_USD="67000"

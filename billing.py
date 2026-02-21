@@ -109,26 +109,30 @@ class BitcoinPriceFetcher:
 
 
 class AlbyBillingClient:
-    """Bitcoin Lightning billing client using Alby Hub API"""
+    """Bitcoin Lightning billing client using Alby Hub NWC Connection String"""
     
-    def __init__(self, api_token: str = None, base_url: str = None):
+    def __init__(self, nwc_url: str = None):
         """
         Initialize Alby billing client
         
         Args:
-            api_token: Alby API token (defaults to ALBY_API_TOKEN env var)
-            base_url: Alby Hub base URL (defaults to ALBY_HUB_URL env var or https://api.getalby.com)
+            nwc_url: Alby Hub NWC Connection String (defaults to ALBY_NWC_URL env var)
+                     Format: nostr+walletconnect://pubkey?relay=wss://...&secret=...
         """
-        self.api_token = api_token or os.getenv('ALBY_API_TOKEN')
-        self.base_url = base_url or os.getenv('ALBY_HUB_URL', 'https://api.getalby.com')
+        self.nwc_url = nwc_url or os.getenv('ALBY_NWC_URL')
         
-        if not self.api_token:
-            raise ValueError("ALBY_API_TOKEN environment variable not set")
+        if not self.nwc_url:
+            raise ValueError(
+                "ALBY_NWC_URL environment variable not set.\n"
+                "Get it from Alby Hub:\n"
+                "1. Go to App Store\n"
+                "2. Click 'Connect' or 'Add New App'\n"
+                "3. Name it 'Fulmine-Sparks'\n"
+                "4. Select: Create invoices + Look up Status of Invoices\n"
+                "5. Copy the NWC Connection String"
+            )
         
-        self.headers = {
-            "Authorization": f"Bearer {self.api_token}",
-            "Content-Type": "application/json"
-        }
+        print(f"✅ Alby Hub NWC client initialized")
     
     def create_invoice(
         self,
