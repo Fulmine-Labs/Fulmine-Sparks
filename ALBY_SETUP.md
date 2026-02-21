@@ -6,8 +6,11 @@
 1. Go to your Alby Hub dashboard
 2. Click **App Store** (in main menu)
 3. Click **"Connect"** or **"Add New App"**
-4. Select scopes: `invoices:create` + `invoices:read`
-5. Copy the token (shown only once!)
+4. Name it: `Fulmine-Sparks`
+5. Select permissions:
+   - ✅ **Create invoices** (required)
+   - ✅ **Look up Status of Invoices** (required)
+6. Copy the token (shown only once!)
 
 ---
 
@@ -27,15 +30,16 @@
 2. Look for **"Connect"** or **"Add App"** button
 3. You should see an option to create a new connection
 
-### 3. Create a New API Token
+### 3. Create a New App Connection
 
 1. Click **"Connect"** or **"Add New App"**
-2. Give it a name like: `Fulmine-Sparks`
-3. Select the required scopes/permissions:
-   - ✅ `invoices:create` - To create Lightning invoices
-   - ✅ `invoices:read` - To check invoice status
+2. Give it a name: `Fulmine-Sparks`
+3. Select the required permissions:
+   - ✅ **Create invoices** - To create Lightning invoices
+   - ✅ **Look up Status of Invoices** - To check invoice status
+   - ❌ Do NOT select: Isolate, Read balance, Read node info, Read transaction history, sign messages, receive wallet notifications, send payments
 
-4. Click **"Create"** or **"Generate"**
+4. Click **"Create"** or **"Connect"**
 
 ### 4. Copy Your Token
 
@@ -156,14 +160,14 @@ EOF
 3. If self-hosted, verify firewall rules
 4. Set `ALBY_HUB_URL` environment variable if using custom URL
 
-### "Scope error"
+### "Permission error"
 
-**Solution**: Token doesn't have required scopes:
-1. Go to Alby Hub Settings
-2. Delete the old token
-3. Create a new token with both scopes:
-   - `invoices:create`
-   - `invoices:read`
+**Solution**: Token doesn't have required permissions:
+1. Go to Alby Hub App Store
+2. Delete the old connection
+3. Create a new connection with both permissions:
+   - ✅ **Create invoices**
+   - ✅ **Look up Status of Invoices**
 
 ## Security Best Practices
 
