@@ -15,6 +15,12 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime
 
+try:
+    import qrcode
+    QRCODE_AVAILABLE = True
+except ImportError:
+    QRCODE_AVAILABLE = False
+
 # API Configuration
 API_BASE_URL = "https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod"
 
@@ -192,6 +198,64 @@ def save_base64_image(base64_data: str, filename: Optional[str] = None) -> Optio
         return None
 
 
+def display_qr_code(invoice_string: str, description: str = "Lightning Invoice"):
+    """Generate and display QR code for Lightning invoice"""
+    if not QRCODE_AVAILABLE:
+        print(f"⚠️  QR code module not available. Install with: pip install qrcode[pil]")
+        return
+    
+    try:
+        # Create QR code
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(invoice_string)
+        qr.make(fit=True)
+        
+        # Create image
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Save QR code
+        qr_filename = f"qr_code_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        qr_path = Path("fulmine_images") / qr_filename
+        qr_path.parent.mkdir(exist_ok=True)
+        img.save(qr_path)
+        
+        print(f"\n📱 QR Code saved to: {qr_path}")
+        print(f"   Scan with your Lightning wallet to pay")
+        
+        # Try to open the QR code
+        try:
+            import subprocess
+            subprocess.Popen(['open', str(qr_path)])  # macOS
+        except:
+            try:
+                import subprocess
+                subprocess.Popen(['xdg-open', str(qr_path)])  # Linux
+            except:
+                pass  # Windows or other
+        
+        # Also display ASCII QR code in terminal
+        print(f"\n📲 ASCII QR Code (scan with your phone):")
+        print()
+        qr_ascii = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=1,
+            border=1,
+        )
+        qr_ascii.add_data(invoice_string)
+        qr_ascii.make(fit=True)
+        qr_ascii.print_ascii(invert=True)
+        print()
+        
+    except Exception as e:
+        print(f"❌ Error generating QR code: {str(e)}")
+
+
 def main():
     """Main CLI interface"""
     
@@ -271,9 +335,11 @@ def main():
                         print(f"Expires:       {invoice['expires_at']}")
                         print(f"\n⚡ Lightning Invoice (BOLT11):")
                         print(f"{invoice['payment_request']}")
-                        print(f"\n📱 Scan QR code or paste invoice into your Lightning wallet")
-                        print(f"Payment Hash: {invoice['payment_hash'][:16]}...")
+                        print(f"\nPayment Hash: {invoice['payment_hash'][:16]}...")
                         print(f"{'='*80}")
+                        
+                        # Display QR code
+                        display_qr_code(invoice['payment_request'])
                 else:
                     print_json(result)
             
@@ -351,9 +417,11 @@ if __name__ == "__main__":
                     print(f"Expires:       {invoice['expires_at']}")
                     print(f"\n⚡ Lightning Invoice (BOLT11):")
                     print(f"{invoice['payment_request']}")
-                    print(f"\n📱 Scan QR code or paste invoice into your Lightning wallet")
-                    print(f"Payment Hash: {invoice['payment_hash'][:16]}...")
+                    print(f"\nPayment Hash: {invoice['payment_hash'][:16]}...")
                     print(f"{'='*80}")
+                    
+                    # Display QR code
+                    display_qr_code(invoice['payment_request'])
             else:
                 print_json(result)
         
