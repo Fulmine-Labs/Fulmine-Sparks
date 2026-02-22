@@ -11,15 +11,22 @@ import asyncio
 import base64
 from datetime import datetime
 
-# Try to import boto3 for S3 storage
+# Try to import boto3 for DynamoDB storage
 try:
     import boto3
-    S3_AVAILABLE = True
-    s3_client = boto3.client('s3')
-    S3_BUCKET = os.getenv('S3_BUCKET', 'fulmine-sparks-images')
+    DYNAMODB_AVAILABLE = True
+    dynamodb = boto3.resource('dynamodb', region_name='us-east-2')
+    IMAGES_TABLE = os.getenv('IMAGES_TABLE', 'fulmine-sparks-images')
+    try:
+        images_table = dynamodb.Table(IMAGES_TABLE)
+        # Test connection
+        images_table.table_status
+    except Exception as e:
+        print(f"Warning: Could not connect to DynamoDB table: {e}")
+        DYNAMODB_AVAILABLE = False
 except ImportError:
-    S3_AVAILABLE = False
-    print("Warning: boto3 not available, S3 storage disabled")
+    DYNAMODB_AVAILABLE = False
+    print("Warning: boto3 not available, DynamoDB storage disabled")
 
 # Add project to path
 sys.path.insert(0, os.path.dirname(__file__))
@@ -137,17 +144,19 @@ def retrieve_image(payment_hash):
                     
                     # Retrieve the stored image for this payment hash
                     image_base64_list = []
-                    if S3_AVAILABLE:
+                    if DYNAMODB_AVAILABLE:
                         try:
-                            # Try to fetch image from S3
-                            s3_key = f"images/{payment_hash}.b64"
-                            response = s3_client.get_object(Bucket=S3_BUCKET, Key=s3_key)
-                            image_data = response['Body'].read().decode('utf-8')
-                            image_base64_list = [image_data]
-                            print(f"✅ Image retrieved from S3: {len(image_data)} characters")
+                            # Try to fetch image from DynamoDB
+                            response = images_table.get_item(Key={'payment_hash': payment_hash})
+                            if 'Item' in response:
+                                item = response['Item']
+                                image_base64_list = item.get('image_base64', [])
+                                print(f"✅ Image retrieved from DynamoDB: {len(image_base64_list)} image(s)")
+                            else:
+                                print(f"⚠️  Image not found in DynamoDB for payment_hash: {payment_hash[:16]}...")
                         except Exception as e:
-                            print(f"⚠️  Could not retrieve image from S3: {str(e)}")
-                            # Image not found in S3, but payment is confirmed
+                            print(f"⚠️  Could not retrieve image from DynamoDB: {str(e)}")
+                            # Image not found in DynamoDB, but payment is confirmed
                             # This could happen if image generation failed or was deleted
                     
                     result = {
@@ -310,22 +319,23 @@ def generate_image(body_data):
                         
                         print(f"✅ Invoice created: {pricing['total_sats']} sats")
                         
-                        # Store image in S3 with payment_hash as key
+                        # Store image in DynamoDB with payment_hash as key
                         payment_hash = invoice_result.get("payment_hash")
-                        if S3_AVAILABLE and payment_hash and image_base64:
+                        if DYNAMODB_AVAILABLE and payment_hash and image_base64:
                             try:
-                                for i, b64_data in enumerate(image_base64):
-                                    if b64_data:
-                                        s3_key = f"images/{payment_hash}.b64" if i == 0 else f"images/{payment_hash}_{i}.b64"
-                                        s3_client.put_object(
-                                            Bucket=S3_BUCKET,
-                                            Key=s3_key,
-                                            Body=b64_data.encode('utf-8'),
-                                            ContentType='text/plain'
-                                        )
-                                        print(f"✅ Image stored in S3: {s3_key}")
+                                images_table.put_item(
+                                    Item={
+                                        'payment_hash': payment_hash,
+                                        'image_base64': image_base64,
+                                        'prompt': prompt,
+                                        'model': model,
+                                        'timestamp': datetime.now().isoformat(),
+                                        'ttl': int(datetime.now().timestamp()) + (7 * 24 * 60 * 60)  # 7 days
+                                    }
+                                )
+                                print(f"✅ Image stored in DynamoDB for payment_hash: {payment_hash[:16]}...")
                             except Exception as e:
-                                print(f"⚠️  Could not store image in S3: {str(e)}")
+                                print(f"⚠️  Could not store image in DynamoDB: {str(e)}")
                                 # Continue anyway - image is generated, just not stored
                         
                     except Exception as e:
