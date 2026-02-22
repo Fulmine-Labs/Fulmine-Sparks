@@ -198,17 +198,8 @@ def generate_image(body_data):
                 
                 processing_time = time.time() - start_time
                 
-                # Start with basic response (NO image - payment required first)
-                result = {
-                    "status": "payment_required",
-                    "prompt": prompt,
-                    "model": model,
-                    "processing_time": processing_time,
-                    "timestamp": datetime.now().isoformat(),
-                    "message": "Image generated. Payment required to retrieve image."
-                }
-                
-                # Create Lightning invoice
+                # Create Lightning invoice FIRST
+                invoice_result = None
                 if BILLING_ENABLED:
                     try:
                         # Check if ALBY_NWC_URL is set
@@ -216,40 +207,30 @@ def generate_image(body_data):
                         if not alby_nwc_url:
                             print("⚠️  ALBY_NWC_URL environment variable not set")
                             return error_response(500, "Payment system not configured")
-                        else:
-                            # Calculate pricing with 25% markup
-                            pricing = calculate_image_price(num_outputs)
-                            print(f"💰 Pricing calculated: {pricing['total_sats']} sats")
-                            
-                            # Create invoice
-                            billing_client = AlbyBillingClient(nwc_url=alby_nwc_url)
-                            invoice_result = billing_client.create_invoice(
-                                amount_sats=pricing['total_sats'],
-                                description=f"SeeDream 4.5 - {num_outputs} image(s): {prompt[:50]}",
-                                metadata={
-                                    "prompt": prompt,
-                                    "model": "seedream-4.5",
-                                    "num_images": num_outputs,
-                                    "price_usd": pricing['your_price_usd']
-                                }
-                            )
-                            
-                            if "error" not in invoice_result:
-                                result["invoice"] = {
-                                    "payment_request": invoice_result.get("payment_request"),
-                                    "payment_hash": invoice_result.get("payment_hash"),
-                                    "amount_sats": pricing['total_sats'],
-                                    "price_usd": pricing['your_price_usd'],
-                                    "expires_at": invoice_result.get("expires_at"),
-                                    "qr_code_png": invoice_result.get("qr_code_png"),
-                                    "qr_code_svg": invoice_result.get("qr_code_svg")
-                                }
-                                print(f"✅ Invoice created: {pricing['total_sats']} sats")
-                                print(f"⚠️  Image NOT returned - payment required first")
-                                print(f"   Payment hash: {invoice_result.get('payment_hash')[:16]}...")
-                            else:
-                                print(f"❌ Invoice creation failed: {invoice_result.get('error')}")
-                                return error_response(500, f"Invoice creation failed: {invoice_result.get('error')}")
+                        
+                        # Calculate pricing with 25% markup
+                        pricing = calculate_image_price(num_outputs)
+                        print(f"💰 Pricing calculated: {pricing['total_sats']} sats")
+                        
+                        # Create invoice
+                        billing_client = AlbyBillingClient(nwc_url=alby_nwc_url)
+                        invoice_result = billing_client.create_invoice(
+                            amount_sats=pricing['total_sats'],
+                            description=f"SeeDream 4.5 - {num_outputs} image(s): {prompt[:50]}",
+                            metadata={
+                                "prompt": prompt,
+                                "model": "seedream-4.5",
+                                "num_images": num_outputs,
+                                "price_usd": pricing['your_price_usd']
+                            }
+                        )
+                        
+                        if "error" in invoice_result:
+                            print(f"❌ Invoice creation failed: {invoice_result.get('error')}")
+                            return error_response(500, f"Invoice creation failed: {invoice_result.get('error')}")
+                        
+                        print(f"✅ Invoice created: {pricing['total_sats']} sats")
+                        
                     except Exception as e:
                         print(f"❌ Error creating invoice: {str(e)}")
                         import traceback
@@ -258,9 +239,28 @@ def generate_image(body_data):
                 else:
                     return error_response(500, "Billing system not enabled")
                 
-                # IMPORTANT: Image is NOT included in response
-                # User must pay invoice first, then retrieve image separately
-                print(f"Image generated in {processing_time:.1f}s (not returned - payment required)")
+                # NOW include image in response with invoice
+                # User can pay immediately and get image
+                result = {
+                    "status": "payment_required",
+                    "prompt": prompt,
+                    "model": model,
+                    "image_base64": image_base64,
+                    "processing_time": processing_time,
+                    "timestamp": datetime.now().isoformat(),
+                    "message": "Image generated. Lightning invoice created. Send payment to unlock.",
+                    "invoice": {
+                        "payment_request": invoice_result.get("payment_request"),
+                        "payment_hash": invoice_result.get("payment_hash"),
+                        "amount_sats": pricing['total_sats'],
+                        "price_usd": pricing['your_price_usd'],
+                        "expires_at": invoice_result.get("expires_at"),
+                        "qr_code_png": invoice_result.get("qr_code_png"),
+                        "qr_code_svg": invoice_result.get("qr_code_svg")
+                    }
+                }
+                
+                print(f"Image generated in {processing_time:.1f}s (returned with invoice)")
                 return success_response(result)
             
             elif status == 'failed':

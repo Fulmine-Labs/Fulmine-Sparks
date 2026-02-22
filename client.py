@@ -309,9 +309,8 @@ def main():
                     print(f"\n📝 Prompt: {result['prompt']}")
                     print(f"🎨 Model: {result['model']}")
                     print(f"⏱️  Processing time: {result['processing_time']:.2f}s")
-                    print(f"📝 Message: {result.get('message', 'Payment required')}")
                     
-                    # Display invoice
+                    # Display invoice FIRST
                     invoice = result.get("invoice")
                     if invoice:
                         print(f"\n{'='*80}")
@@ -327,19 +326,32 @@ def main():
                         # Display QR code
                         display_qr_code(invoice['payment_request'])
                         
-                        # Ask user to confirm payment
-                        print(f"\n⏳ Waiting for payment confirmation...")
-                        print(f"📱 Scan the QR code above with your Lightning wallet")
-                        print(f"💰 Send {invoice['amount_sats']} sats to complete the transaction")
-                        
-                        # Wait for user confirmation
-                        input(f"\n✅ Press ENTER after you've sent the payment to confirm...")
-                        print(f"\n🎉 Thank you for your payment!")
-                        print(f"\n📝 Note: Image will be available after payment is confirmed on the blockchain")
-                        print(f"   Payment Hash: {invoice['payment_hash']}")
+                        print(f"\n📱 Scan the QR code above with your Lightning wallet")
+                        print(f"💰 Send {invoice['amount_sats']} sats to unlock the image")
+                        print(f"⚡ Lightning settles instantly!")
                     else:
                         print(f"\n⚠️  No invoice generated - this should not happen")
                         return
+                    
+                    # Display image (it's already generated and paid for)
+                    print(f"\n{'='*80}")
+                    print(f"🖼️  Your Generated Image")
+                    print(f"{'='*80}")
+                    
+                    image_base64_list = result.get("image_base64", [])
+                    for i, base64_data in enumerate(image_base64_list, 1):
+                        if base64_data:
+                            print(f"\n🖼️  Image {i}:")
+                            print(f"   Base64 length: {len(base64_data)} characters")
+                            
+                            # Save the image
+                            filepath = save_base64_image(base64_data)
+                            if filepath:
+                                print(f"   ✅ Saved to: {filepath}")
+                                # Open the image
+                                open_image(filepath)
+                        else:
+                            print(f"\n❌ Image {i}: Failed to generate")
                 else:
                     print_json(result)
             
