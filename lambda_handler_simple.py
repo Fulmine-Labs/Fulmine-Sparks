@@ -198,23 +198,24 @@ def generate_image(body_data):
                 
                 processing_time = time.time() - start_time
                 
-                # Start with basic response (NO image yet)
+                # Start with basic response (NO image - payment required first)
                 result = {
-                    "status": "completed",
+                    "status": "payment_required",
                     "prompt": prompt,
                     "model": model,
                     "processing_time": processing_time,
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": datetime.now().isoformat(),
+                    "message": "Image generated. Payment required to retrieve image."
                 }
                 
-                # Create Lightning invoice FIRST
-                invoice_created = False
+                # Create Lightning invoice
                 if BILLING_ENABLED:
                     try:
                         # Check if ALBY_NWC_URL is set
                         alby_nwc_url = os.getenv('ALBY_NWC_URL')
                         if not alby_nwc_url:
                             print("⚠️  ALBY_NWC_URL environment variable not set")
+                            return error_response(500, "Payment system not configured")
                         else:
                             # Calculate pricing with 25% markup
                             pricing = calculate_image_price(num_outputs)
@@ -243,24 +244,23 @@ def generate_image(body_data):
                                     "qr_code_png": invoice_result.get("qr_code_png"),
                                     "qr_code_svg": invoice_result.get("qr_code_svg")
                                 }
-                                invoice_created = True
                                 print(f"✅ Invoice created: {pricing['total_sats']} sats")
+                                print(f"⚠️  Image NOT returned - payment required first")
+                                print(f"   Payment hash: {invoice_result.get('payment_hash')[:16]}...")
                             else:
                                 print(f"❌ Invoice creation failed: {invoice_result.get('error')}")
+                                return error_response(500, f"Invoice creation failed: {invoice_result.get('error')}")
                     except Exception as e:
                         print(f"❌ Error creating invoice: {str(e)}")
                         import traceback
                         traceback.print_exc()
-                
-                # ONLY include image if invoice was successfully created
-                if invoice_created:
-                    result["image_base64"] = image_base64
-                    print(f"✅ Image included in response (payment required)")
+                        return error_response(500, f"Error creating invoice: {str(e)}")
                 else:
-                    print(f"⚠️  Image NOT included - invoice creation failed")
-                    result["error"] = "Payment invoice could not be created. Image not available."
+                    return error_response(500, "Billing system not enabled")
                 
-                print(f"Image generated in {processing_time:.1f}s")
+                # IMPORTANT: Image is NOT included in response
+                # User must pay invoice first, then retrieve image separately
+                print(f"Image generated in {processing_time:.1f}s (not returned - payment required)")
                 return success_response(result)
             
             elif status == 'failed':
