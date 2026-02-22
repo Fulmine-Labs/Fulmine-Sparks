@@ -239,16 +239,15 @@ def generate_image(body_data):
                 else:
                     return error_response(500, "Billing system not enabled")
                 
-                # NOW include image in response with invoice
-                # User can pay immediately and get image
+                # Return invoice ONLY (no image yet)
+                # Image will be returned after payment is confirmed
                 result = {
                     "status": "payment_required",
                     "prompt": prompt,
                     "model": model,
-                    "image_base64": image_base64,
                     "processing_time": processing_time,
                     "timestamp": datetime.now().isoformat(),
-                    "message": "Image generated. Lightning invoice created. Send payment to unlock.",
+                    "message": "Image generated. Payment required to retrieve.",
                     "invoice": {
                         "payment_request": invoice_result.get("payment_request"),
                         "payment_hash": invoice_result.get("payment_hash"),
@@ -260,7 +259,7 @@ def generate_image(body_data):
                     }
                 }
                 
-                print(f"Image generated in {processing_time:.1f}s (returned with invoice)")
+                print(f"Image generated in {processing_time:.1f}s (invoice returned, image held)")
                 return success_response(result)
             
             elif status == 'failed':

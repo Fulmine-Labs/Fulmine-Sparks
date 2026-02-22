@@ -333,25 +333,12 @@ def main():
                         print(f"\n⚠️  No invoice generated - this should not happen")
                         return
                     
-                    # Display image (it's already generated and paid for)
-                    print(f"\n{'='*80}")
-                    print(f"🖼️  Your Generated Image")
-                    print(f"{'='*80}")
-                    
-                    image_base64_list = result.get("image_base64", [])
-                    for i, base64_data in enumerate(image_base64_list, 1):
-                        if base64_data:
-                            print(f"\n🖼️  Image {i}:")
-                            print(f"   Base64 length: {len(base64_data)} characters")
-                            
-                            # Save the image
-                            filepath = save_base64_image(base64_data)
-                            if filepath:
-                                print(f"   ✅ Saved to: {filepath}")
-                                # Open the image
-                                open_image(filepath)
-                        else:
-                            print(f"\n❌ Image {i}: Failed to generate")
+                    # Image will be available after payment is confirmed
+                    print(f"\n📝 Next steps:")
+                    print(f"1. Scan the QR code with your Lightning wallet")
+                    print(f"2. Send {invoice['amount_sats']} sats")
+                    print(f"3. After payment settles, retrieve your image with:")
+                    print(f"   python3 client.py retrieve {invoice['payment_hash']}")
                 else:
                     print_json(result)
             
