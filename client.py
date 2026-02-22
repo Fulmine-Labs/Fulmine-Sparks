@@ -441,33 +441,66 @@ if __name__ == "__main__":
                 sys.exit(1)
             
             payment_hash = sys.argv[2]
+            max_wait_time = 300  # 5 minutes max wait
+            poll_interval = 2  # Check every 2 seconds
+            elapsed = 0
             
             print(f"⏳ Retrieving image for payment hash: {payment_hash[:16]}...")
-            result = client.retrieve_image(payment_hash=payment_hash)
+            print(f"📱 Waiting for payment confirmation and image retrieval...")
+            print(f"⏱️  This may take a few seconds...\n")
             
-            if "error" in result:
-                print(f"❌ Error: {result['error']}")
-                sys.exit(1)
-            elif "status" in result and result["status"] == "success":
-                print("✅ Payment confirmed!")
-                print(f"🖼️  Image retrieved successfully!")
+            while elapsed < max_wait_time:
+                result = client.retrieve_image(payment_hash=payment_hash)
                 
-                image_base64_list = result.get("image_base64", [])
-                for i, base64_data in enumerate(image_base64_list, 1):
-                    if base64_data:
-                        print(f"\n🖼️  Image {i}:")
-                        print(f"   Base64 length: {len(base64_data)} characters")
-                        
-                        # Save the image
-                        filepath = save_base64_image(base64_data)
-                        if filepath:
-                            print(f"   ✅ Saved to: {filepath}")
-                            # Open the image
-                            open_image(filepath)
+                if "error" in result:
+                    # Check if it's a payment not confirmed error
+                    if "402" in str(result.get('error', '')) or "not confirmed" in str(result.get('error', '')).lower():
+                        print(f"⏳ Payment not yet confirmed... ({elapsed}s elapsed)", end='\r')
+                        import time
+                        time.sleep(poll_interval)
+                        elapsed += poll_interval
+                        continue
                     else:
-                        print(f"\n❌ Image {i}: Failed to retrieve")
-            else:
-                print_json(result)
+                        print(f"\n❌ Error: {result['error']}")
+                        sys.exit(1)
+                
+                elif "status" in result and result["status"] == "success":
+                    image_base64_list = result.get("image_base64", [])
+                    
+                    # Check if images are available
+                    if image_base64_list and any(image_base64_list):
+                        print(f"\n✅ Payment confirmed!")
+                        print(f"🖼️  Image retrieved successfully!")
+                        
+                        for i, base64_data in enumerate(image_base64_list, 1):
+                            if base64_data:
+                                print(f"\n🖼️  Image {i}:")
+                                print(f"   Base64 length: {len(base64_data)} characters")
+                                
+                                # Save the image
+                                filepath = save_base64_image(base64_data)
+                                if filepath:
+                                    print(f"   ✅ Saved to: {filepath}")
+                                    # Open the image
+                                    open_image(filepath)
+                            else:
+                                print(f"\n❌ Image {i}: Failed to retrieve")
+                        break
+                    else:
+                        # Payment confirmed but image not ready yet
+                        print(f"⏳ Payment confirmed, waiting for image... ({elapsed}s elapsed)", end='\r')
+                        import time
+                        time.sleep(poll_interval)
+                        elapsed += poll_interval
+                        continue
+                else:
+                    print(f"\n❌ Unexpected response: {result}")
+                    sys.exit(1)
+            
+            if elapsed >= max_wait_time:
+                print(f"\n⏱️  Timeout: Image not retrieved within {max_wait_time} seconds")
+                print(f"💡 Try again later with: python3 client.py retrieve {payment_hash}")
+                sys.exit(1)
         
         else:
             print("Usage: python client.py [health|models|generate '<prompt>' [num_outputs]|retrieve <payment_hash>]")
