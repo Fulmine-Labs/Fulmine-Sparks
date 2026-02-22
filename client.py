@@ -77,6 +77,21 @@ class FulmineSparkClient:
             return response.json()
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
+    
+    def retrieve_image(self, payment_hash: str) -> Dict[str, Any]:
+        """Retrieve image after payment is confirmed"""
+        
+        if not payment_hash:
+            return {"error": "Payment hash cannot be empty"}
+        
+        try:
+            response = self.session.get(
+                f"{self.base_url}/api/v1/services/image/retrieve/{payment_hash}"
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            return {"error": str(e)}
 
 
 def print_header(text: str):
@@ -408,24 +423,54 @@ if __name__ == "__main__":
                     # Display QR code
                     display_qr_code(invoice['payment_request'])
                     
-                    # Ask user to confirm payment
-                    print(f"\n⏳ Waiting for payment confirmation...")
-                    print(f"📱 Scan the QR code above with your Lightning wallet")
-                    print(f"💰 Send {invoice['amount_sats']} sats to complete the transaction")
-                    
-                    # Wait for user confirmation
-                    input(f"\n✅ Press ENTER after you've sent the payment to confirm...")
-                    print(f"\n🎉 Thank you for your payment!")
-                    print(f"\n📝 Note: Image will be available after payment is confirmed on the blockchain")
-                    print(f"   Payment Hash: {invoice['payment_hash']}")
+                    # Show next steps
+                    print(f"\n📝 Next steps:")
+                    print(f"1. Scan the QR code with your Lightning wallet")
+                    print(f"2. Send {invoice['amount_sats']} sats")
+                    print(f"3. After payment settles, retrieve your image with:")
+                    print(f"   python3 client.py retrieve {invoice['payment_hash']}")
                 else:
                     print(f"\n⚠️  No invoice generated - this should not happen")
                     sys.exit(1)
             else:
                 print_json(result)
         
+        elif sys.argv[1] == "retrieve":
+            if len(sys.argv) < 3:
+                print("Usage: python client.py retrieve <payment_hash>")
+                sys.exit(1)
+            
+            payment_hash = sys.argv[2]
+            
+            print(f"⏳ Retrieving image for payment hash: {payment_hash[:16]}...")
+            result = client.retrieve_image(payment_hash=payment_hash)
+            
+            if "error" in result:
+                print(f"❌ Error: {result['error']}")
+                sys.exit(1)
+            elif "status" in result and result["status"] == "success":
+                print("✅ Payment confirmed!")
+                print(f"🖼️  Image retrieved successfully!")
+                
+                image_base64_list = result.get("image_base64", [])
+                for i, base64_data in enumerate(image_base64_list, 1):
+                    if base64_data:
+                        print(f"\n🖼️  Image {i}:")
+                        print(f"   Base64 length: {len(base64_data)} characters")
+                        
+                        # Save the image
+                        filepath = save_base64_image(base64_data)
+                        if filepath:
+                            print(f"   ✅ Saved to: {filepath}")
+                            # Open the image
+                            open_image(filepath)
+                    else:
+                        print(f"\n❌ Image {i}: Failed to retrieve")
+            else:
+                print_json(result)
+        
         else:
-            print("Usage: python client.py [health|models|generate '<prompt>' [num_outputs]]")
+            print("Usage: python client.py [health|models|generate '<prompt>' [num_outputs]|retrieve <payment_hash>]")
             sys.exit(1)
     else:
         # Interactive mode

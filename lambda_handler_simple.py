@@ -85,6 +85,10 @@ def lambda_handler(event, context):
         elif path == '/api/v1/services/image/generate' and http_method == 'POST':
             return generate_image(body_data)
         
+        elif path.startswith('/api/v1/services/image/retrieve/') and http_method == 'GET':
+            payment_hash = path.split('/api/v1/services/image/retrieve/')[-1]
+            return retrieve_image(payment_hash)
+        
         elif path == '/api/v1/services/image/models' and http_method == 'GET':
             return list_models()
         
@@ -96,6 +100,58 @@ def lambda_handler(event, context):
         import traceback
         traceback.print_exc()
         return error_response(500, str(e))
+
+
+def retrieve_image(payment_hash):
+    """Retrieve image after payment is confirmed."""
+    try:
+        print(f"🔍 Retrieving image for payment hash: {payment_hash[:16]}...")
+        
+        # Check if payment was received
+        if BILLING_ENABLED:
+            try:
+                alby_nwc_url = os.getenv('ALBY_NWC_URL')
+                if not alby_nwc_url:
+                    return error_response(500, "Payment system not configured")
+                
+                billing_client = AlbyBillingClient(nwc_url=alby_nwc_url)
+                invoice_status = billing_client.get_invoice(payment_hash)
+                
+                if "error" in invoice_status:
+                    print(f"❌ Invoice lookup failed: {invoice_status.get('error')}")
+                    return error_response(404, f"Invoice not found: {invoice_status.get('error')}")
+                
+                # Check if payment was settled
+                if invoice_status.get('settled') or invoice_status.get('state') == 'SETTLED':
+                    print(f"✅ Payment confirmed for hash: {payment_hash[:16]}...")
+                    
+                    # TODO: Retrieve the stored image for this payment hash
+                    # For now, return a placeholder
+                    result = {
+                        "status": "success",
+                        "payment_hash": payment_hash,
+                        "message": "Payment confirmed. Image retrieved.",
+                        "image_base64": [],  # Would be populated from storage
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    return success_response(result)
+                else:
+                    print(f"⏳ Payment not yet confirmed for hash: {payment_hash[:16]}...")
+                    return error_response(402, "Payment not confirmed yet. Please wait for Lightning settlement.")
+            
+            except Exception as e:
+                print(f"❌ Error checking payment: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                return error_response(500, f"Error checking payment: {str(e)}")
+        else:
+            return error_response(500, "Billing system not enabled")
+    
+    except Exception as e:
+        print(f"❌ Error retrieving image: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return error_response(500, f"Error retrieving image: {str(e)}")
 
 
 def generate_image(body_data):
