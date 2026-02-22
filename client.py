@@ -304,13 +304,14 @@ def main():
                 
                 if "error" in result:
                     print(f"❌ Error: {result['error']}")
-                elif "status" in result and result["status"] == "completed":
+                elif "status" in result and result["status"] == "payment_required":
                     print("✅ Image generated successfully!")
                     print(f"\n📝 Prompt: {result['prompt']}")
                     print(f"🎨 Model: {result['model']}")
                     print(f"⏱️  Processing time: {result['processing_time']:.2f}s")
+                    print(f"📝 Message: {result.get('message', 'Payment required')}")
                     
-                    # Display invoice FIRST if available
+                    # Display invoice
                     invoice = result.get("invoice")
                     if invoice:
                         print(f"\n{'='*80}")
@@ -334,29 +335,11 @@ def main():
                         # Wait for user confirmation
                         input(f"\n✅ Press ENTER after you've sent the payment to confirm...")
                         print(f"\n🎉 Thank you for your payment!")
+                        print(f"\n📝 Note: Image will be available after payment is confirmed on the blockchain")
+                        print(f"   Payment Hash: {invoice['payment_hash']}")
                     else:
-                        print(f"\n⚠️  No invoice generated - image cannot be displayed without payment")
+                        print(f"\n⚠️  No invoice generated - this should not happen")
                         return
-                    
-                    # NOW display the image after payment confirmation
-                    print(f"\n{'='*80}")
-                    print(f"🖼️  Your Generated Image")
-                    print(f"{'='*80}")
-                    
-                    image_base64_list = result.get("image_base64", [])
-                    for i, base64_data in enumerate(image_base64_list, 1):
-                        if base64_data:
-                            print(f"\n🖼️  Image {i}:")
-                            print(f"   Base64 length: {len(base64_data)} characters")
-                            
-                            # Save the image
-                            filepath = save_base64_image(base64_data)
-                            if filepath:
-                                print(f"   ✅ Saved to: {filepath}")
-                                # Open the image
-                                open_image(filepath)
-                        else:
-                            print(f"\n❌ Image {i}: Failed to generate")
                 else:
                     print_json(result)
             
@@ -403,13 +386,14 @@ if __name__ == "__main__":
             
             if "error" in result:
                 print(f"❌ Error: {result['error']}")
-            elif "status" in result and result["status"] == "completed":
+            elif "status" in result and result["status"] == "payment_required":
                 print("✅ Image generated successfully!")
                 print(f"📝 Prompt: {result['prompt']}")
                 print(f"🎨 Model: {result['model']}")
                 print(f"⏱️  Processing time: {result['processing_time']:.2f}s")
+                print(f"📝 Message: {result.get('message', 'Payment required')}")
                 
-                # Display invoice FIRST if available
+                # Display invoice
                 invoice = result.get("invoice")
                 if invoice:
                     print(f"\n{'='*80}")
@@ -433,29 +417,11 @@ if __name__ == "__main__":
                     # Wait for user confirmation
                     input(f"\n✅ Press ENTER after you've sent the payment to confirm...")
                     print(f"\n🎉 Thank you for your payment!")
+                    print(f"\n📝 Note: Image will be available after payment is confirmed on the blockchain")
+                    print(f"   Payment Hash: {invoice['payment_hash']}")
                 else:
-                    print(f"\n⚠️  No invoice generated - image cannot be displayed without payment")
+                    print(f"\n⚠️  No invoice generated - this should not happen")
                     sys.exit(1)
-                
-                # NOW display the image after payment confirmation
-                print(f"\n{'='*80}")
-                print(f"🖼️  Your Generated Image")
-                print(f"{'='*80}")
-                
-                image_base64_list = result.get("image_base64", [])
-                for i, base64_data in enumerate(image_base64_list, 1):
-                    if base64_data:
-                        print(f"\n🖼️  Image {i}:")
-                        print(f"   Base64 length: {len(base64_data)} characters")
-                        
-                        # Save the image
-                        filepath = save_base64_image(base64_data)
-                        if filepath:
-                            print(f"   ✅ Saved to: {filepath}")
-                            # Open the image
-                            open_image(filepath)
-                    else:
-                        print(f"\n❌ Image {i}: Failed to generate")
             else:
                 print_json(result)
         
