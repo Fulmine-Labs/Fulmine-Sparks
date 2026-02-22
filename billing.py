@@ -181,38 +181,60 @@ class AlbyBillingClient:
             - expires_at: Expiration timestamp
         """
         try:
-            # For now, use a mock invoice that demonstrates the system
-            # In production, this would use NWC protocol to create real invoices
-            import hashlib
-            import secrets
+            # Use Alby API to create REAL invoices
             from datetime import datetime, timedelta
             
-            # Generate a mock BOLT11 invoice
-            # Format: lnbc<amount>u1p<hash>...
-            amount_msat = amount_sats * 1000
-            random_hash = secrets.token_hex(16)
-            payment_hash = hashlib.sha256(random_hash.encode()).hexdigest()[:32]
+            # Get API token from environment variable
+            alby_token = os.getenv('ALBY_API_TOKEN')
+            if not alby_token:
+                return {"error": "ALBY_API_TOKEN environment variable not set"}
             
-            # Create mock BOLT11 invoice string
-            payment_request = f"lnbc{amount_sats}u1p{random_hash}pp5qxkye7e9vhgjyxyh5wlhxpx8r768kygyl4v3ezu3hypus7x3dwzqhp5s6dz9ye889e8uyaxjzjlkh3vtwes50mhyvfraf3y6l3yk8t2mlgscqzpgxqyz5vqsp5zt95vajqwya7haely3p0ev2jg4v6lr84up4ujm5auk8u74xggtas9qyyssq7lmukwlctr2y4gcuw9324gfxefug45zrrywrp5l3fmn85zulk6z44pqx7vywp7zsks2r5rclang06akp6054tlgfad80ktzg9vwyatcqz6ssya"
+            print(f"🔄 Creating real invoice via Alby API...")
             
-            expires_at = (datetime.now() + timedelta(seconds=expiry_seconds)).isoformat()
-            
-            result = {
-                "payment_request": payment_request,
-                "payment_hash": payment_hash,
-                "expires_at": expires_at,
-                "amount_sats": amount_sats,
-                "description": description
+            headers = {
+                "Authorization": f"Bearer {alby_token}",
+                "Content-Type": "application/json"
             }
             
-            # Log successful invoice creation
-            print(f"✅ Invoice created: {result.get('payment_hash', 'unknown')[:16]}...")
+            payload = {
+                "amount": int(amount_sats),
+                "description": description,
+                "expiry": expiry_seconds
+            }
             
-            return result
-        except requests.exceptions.RequestException as e:
+            response = requests.post(
+                "https://api.getalby.com/invoices",
+                json=payload,
+                headers=headers,
+                timeout=10
+            )
+            
+            if response.status_code in [200, 201]:
+                invoice_data = response.json()
+                print(f"✅ Real invoice created via Alby API")
+                
+                result = {
+                    "payment_request": invoice_data.get('payment_request'),
+                    "payment_hash": invoice_data.get('payment_hash'),
+                    "expires_at": invoice_data.get('expires_at'),
+                    "amount_sats": amount_sats,
+                    "description": description,
+                    "qr_code_png": invoice_data.get('qr_code_png'),
+                    "qr_code_svg": invoice_data.get('qr_code_svg')
+                }
+                
+                print(f"✅ Invoice created: {result.get('payment_hash', 'unknown')[:16]}...")
+                return result
+            else:
+                error_msg = f"Alby API error: {response.status_code} - {response.text[:200]}"
+                print(f"❌ {error_msg}")
+                return {"error": error_msg}
+                
+        except Exception as e:
             error_msg = f"Failed to create invoice: {str(e)}"
             print(f"❌ {error_msg}")
+            import traceback
+            traceback.print_exc()
             return {"error": error_msg}
     
     def get_invoice(self, payment_hash: str) -> Dict[str, Any]:
