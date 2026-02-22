@@ -248,13 +248,34 @@ class AlbyBillingClient:
             Invoice details including settled status
         """
         try:
+            # Use Alby API to get invoice status
+            alby_token = os.getenv('ALBY_API_TOKEN')
+            if not alby_token:
+                return {"error": "ALBY_API_TOKEN not set"}
+            
+            headers = {
+                "Authorization": f"Bearer {alby_token}",
+                "Content-Type": "application/json"
+            }
+            
+            # Query invoices by payment hash
             response = requests.get(
-                f"{self.base_url}/invoices/{payment_hash}",
-                headers=self.headers,
+                "https://api.getalby.com/invoices",
+                headers=headers,
                 timeout=10
             )
             response.raise_for_status()
-            return response.json()
+            
+            invoices = response.json()
+            if isinstance(invoices, list):
+                # Find invoice with matching payment hash
+                for invoice in invoices:
+                    if invoice.get('payment_hash') == payment_hash or invoice.get('r_hash_str') == payment_hash:
+                        return invoice
+                return {"error": f"Invoice not found: {payment_hash}"}
+            else:
+                return invoices
+                
         except requests.exceptions.RequestException as e:
             return {"error": str(e)}
     
