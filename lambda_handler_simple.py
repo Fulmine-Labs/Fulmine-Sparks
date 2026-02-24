@@ -500,7 +500,16 @@ def get_image_status_endpoint(payment_hash, billing_client=None):
         status = get_image_status(payment_hash)
         
         if status is None:
-            return error_response(404, f"Image not found: {payment_hash}")
+            # Image not found - return pending status instead of 404
+            # This allows clients to keep polling
+            print(f"⏳ Image not yet generated or expired: {payment_hash[:16]}...")
+            result = {
+                "status": "pending",
+                "payment_hash": payment_hash,
+                "timestamp": datetime.now().isoformat(),
+                "message": "Image generation in progress or not found"
+            }
+            return success_response(result)
         
         # If image is still pending, do a quick payment check
         if status == "pending" and billing_client:
@@ -543,7 +552,16 @@ def retrieve_image(payment_hash):
         status = get_image_status(payment_hash)
         
         if status is None:
-            return error_response(404, f"Image not found: {payment_hash}")
+            # Image not found - return pending status instead of 404
+            # This allows clients to keep polling
+            print(f"⏳ Image not yet generated or expired: {payment_hash[:16]}...")
+            result = {
+                "status": "pending",
+                "payment_hash": payment_hash,
+                "timestamp": datetime.now().isoformat(),
+                "message": "Image generation in progress or not found"
+            }
+            return success_response(result)
         
         if status == 'expired':
             print(f"❌ Image expired for hash: {payment_hash[:16]}...")
