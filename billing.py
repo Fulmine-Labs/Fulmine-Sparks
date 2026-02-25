@@ -239,7 +239,7 @@ class AlbyBillingClient:
     
     def get_invoice(self, payment_hash: str) -> Dict[str, Any]:
         """
-        Get invoice details and status via NWC
+        Get invoice details and status via Alby API
         
         Args:
             payment_hash: Payment hash of the invoice
@@ -248,54 +248,64 @@ class AlbyBillingClient:
             Invoice details including settled status
         """
         try:
-            # Use NWC to get invoice status
-            # Send NWC request to get invoice info
-            import json
-            from urllib.parse import urlencode
+            # Try Alby Hub public API first (no auth required)
+            try:
+                response = requests.get(
+                    f"https://api.getalby.com/invoices/{payment_hash}",
+                    timeout=5
+                )
+                
+                if response.status_code == 200:
+                    invoice = response.json()
+                    settled = invoice.get('settled', False)
+                    print(f"✅ Invoice found via Alby API: {payment_hash[:16]}... settled={settled}")
+                    return {
+                        "payment_hash": payment_hash,
+                        "settled": settled,
+                        "state": "SETTLED" if settled else "PENDING",
+                        "amount": invoice.get('amount'),
+                        "description": invoice.get('description')
+                    }
+            except Exception as e:
+                print(f"⚠️  Alby public API check failed: {str(e)}")
             
-            # Build NWC request
-            request_body = {
-                "method": "get_info",
-                "params": {}
-            }
-            
-            # For now, use a simpler approach: query via Alby Hub API if available
-            # Otherwise return pending status
+            # Try Alby Hub API with token if available
             alby_token = os.getenv('ALBY_API_TOKEN')
             if alby_token:
-                headers = {
-                    "Authorization": f"Bearer {alby_token}",
-                    "Content-Type": "application/json"
-                }
+                try:
+                    headers = {
+                        "Authorization": f"Bearer {alby_token}",
+                        "Content-Type": "application/json"
+                    }
+                    
+                    response = requests.get(
+                        "https://api.getalby.com/invoices",
+                        headers=headers,
+                        timeout=10
+                    )
+                    response.raise_for_status()
+                    
+                    invoices = response.json()
+                    if isinstance(invoices, list):
+                        for invoice in invoices:
+                            if invoice.get('payment_hash') == payment_hash or invoice.get('r_hash_str') == payment_hash:
+                                print(f"✅ Invoice found via Alby API (auth): {payment_hash[:16]}... settled={invoice.get('settled', False)}")
+                                return invoice
+                except Exception as e:
+                    print(f"⚠️  Alby API (auth) check failed: {str(e)}")
+            
+            # Return pending status (client will retry)
+            print(f"⏳ Returning pending status for: {payment_hash[:16]}...")
+            return {
+                "payment_hash": payment_hash,
+                "settled": False,
+                "state": "PENDING",
+                "message": "Invoice status check in progress"
+            }
                 
-                # Query invoices by payment hash
-                response = requests.get(
-                    "https://api.getalby.com/invoices",
-                    headers=headers,
-                    timeout=10
-                )
-                response.raise_for_status()
-                
-                invoices = response.json()
-                if isinstance(invoices, list):
-                    # Find invoice with matching payment hash
-                    for invoice in invoices:
-                        if invoice.get('payment_hash') == payment_hash or invoice.get('r_hash_str') == payment_hash:
-                            return invoice
-                    return {"error": f"Invoice not found: {payment_hash}"}
-                else:
-                    return invoices
-            else:
-                # Fallback: return pending status
-                # The client will retry and eventually detect payment
-                return {
-                    "payment_hash": payment_hash,
-                    "settled": False,
-                    "state": "PENDING"
-                }
-                
-        except requests.exceptions.RequestException as e:
-            return {"error": str(e)}
+        except Exception as e:
+            print(f"❌ Error in get_invoice: {str(e)}")
+            return {"error": str(e), "settled": False}
     
     def check_payment(self, payment_hash: str) -> bool:
         """
