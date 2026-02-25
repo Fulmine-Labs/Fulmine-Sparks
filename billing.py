@@ -288,11 +288,22 @@ class AlbyBillingClient:
                     invoices = response.json()
                     if isinstance(invoices, list):
                         for invoice in invoices:
-                            if invoice.get('payment_hash') == payment_hash or invoice.get('r_hash_str') == payment_hash:
-                                print(f"✅ Invoice found via Alby API (auth): {payment_hash[:16]}... settled={invoice.get('settled', False)}")
-                                return invoice
+                            # Check multiple possible payment hash fields
+                            if (invoice.get('payment_hash') == payment_hash or 
+                                invoice.get('r_hash_str') == payment_hash or
+                                invoice.get('hash') == payment_hash):
+                                settled = invoice.get('settled', False)
+                                print(f"✅ Invoice found: {payment_hash[:16]}... settled={settled}")
+                                return {
+                                    "payment_hash": payment_hash,
+                                    "settled": settled,
+                                    "state": "SETTLED" if settled else "PENDING",
+                                    "amount": invoice.get('amount'),
+                                    "description": invoice.get('description')
+                                }
+                        print(f"⚠️  Invoice not found in list of {len(invoices)} invoices")
                 except Exception as e:
-                    print(f"⚠️  Alby API (auth) check failed: {str(e)}")
+                    print(f"⚠️  Alby API check failed: {str(e)}")
             
             # Return pending status (client will retry)
             print(f"⏳ Returning pending status for: {payment_hash[:16]}...")
@@ -300,11 +311,13 @@ class AlbyBillingClient:
                 "payment_hash": payment_hash,
                 "settled": False,
                 "state": "PENDING",
-                "message": "Invoice status check in progress"
+                "message": "Waiting for payment confirmation"
             }
                 
         except Exception as e:
             print(f"❌ Error in get_invoice: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return {"error": str(e), "settled": False}
     
     def check_payment(self, payment_hash: str) -> bool:
