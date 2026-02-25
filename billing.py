@@ -212,6 +212,14 @@ class AlbyBillingClient:
             if response.status_code in [200, 201]:
                 invoice_data = response.json()
                 print(f"✅ Real invoice created via Alby API")
+                print(f"📋 Invoice response keys: {list(invoice_data.keys())}")
+                
+                # Debug: print all fields to understand the response structure
+                for key, value in invoice_data.items():
+                    if isinstance(value, str) and len(str(value)) > 100:
+                        print(f"   {key}: {str(value)[:50]}...")
+                    else:
+                        print(f"   {key}: {value}")
                 
                 result = {
                     "payment_request": invoice_data.get('payment_request'),
@@ -287,8 +295,17 @@ class AlbyBillingClient:
                     
                     invoices = response.json()
                     if isinstance(invoices, list):
-                        for invoice in invoices:
+                        print(f"📋 Searching through {len(invoices)} invoices for: {payment_hash[:16]}...")
+                        for i, invoice in enumerate(invoices):
+                            # Debug: print first invoice structure
+                            if i == 0:
+                                print(f"   First invoice keys: {list(invoice.keys())}")
+                            
                             # Check multiple possible payment hash fields
+                            invoice_hash = invoice.get('payment_hash') or invoice.get('r_hash_str') or invoice.get('hash')
+                            if i < 3:  # Print first 3 for debugging
+                                print(f"   Invoice {i}: hash={invoice_hash[:16] if invoice_hash else 'None'}... settled={invoice.get('settled')}")
+                            
                             if (invoice.get('payment_hash') == payment_hash or 
                                 invoice.get('r_hash_str') == payment_hash or
                                 invoice.get('hash') == payment_hash):
