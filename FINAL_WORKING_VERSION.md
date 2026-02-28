@@ -210,9 +210,39 @@ aws logs tail /aws/lambda/fulmine-sparks --follow
    aws logs tail /aws/lambda/fulmine-sparks --follow
    ```
 
+## Known Issues
+
+### ⚠️ Bug: Counter Doesn't Decrement After Payment
+**Symptom**: Test shows "✅ Payment confirmed!" but DynamoDB counter still shows 3 unpaid invoices
+
+**Root Cause**: ALBY_NWC_URL environment variable not set on Lambda
+- Without ALBY_NWC_URL, billing_client is None
+- Payment detection never runs
+- track_payment_confirmed() is never called
+- Counter stays at 3 instead of decrementing to 2
+
+**Check if affected**:
+```bash
+aws lambda get-function-configuration \
+  --function-name fulmine-sparks \
+  --region us-east-2 | grep ALBY_NWC_URL
+```
+
+**Fix**:
+```bash
+aws lambda update-function-configuration \
+  --function-name fulmine-sparks \
+  --environment 'Variables={ALBY_NWC_URL=nwc://YOUR_NWC_URL_HERE}' \
+  --region us-east-2
+```
+
+**Workaround if NWC URL unavailable**:
+- Wait 1 hour for TTL auto-cleanup
+- Or manually reset: `aws dynamodb delete-item --table-name fulmine-sparks-rate-limits --key '{"client_ip":{"S":"YOUR_IP"}}'`
+
 ## Known Behavior
 
-### Rate Limit Cleared After Payment
+### Rate Limit Cleared After Payment (if ALBY_NWC_URL set)
 - When payment is detected and confirmed, `unpaid_invoices` counter decrements
 - Client can immediately generate next image
 - No manual intervention required
