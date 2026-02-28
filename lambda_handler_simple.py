@@ -796,10 +796,11 @@ def list_models():
     """List available models."""
     try:
         # Calculate actual user cost (with 25% markup)
-        from billing import calculate_image_price
-        pricing = calculate_image_price(num_images=1)
-        user_cost_per_image = pricing['your_price_usd']
-        
+        # DISABLED:         from billing import calculate_image_price
+        # DISABLED:         pricing = calculate_image_price(num_images=1)
+        # DISABLED:         user_cost_per_image = pricing['your_price_usd']
+        # DISABLED:         
+        user_cost_per_image = 0.05  # Use default pricing
         models = [
             # Bytedance Seedream 4.5 (excellent quality, 4K support)
             {
