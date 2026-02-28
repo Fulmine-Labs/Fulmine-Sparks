@@ -823,7 +823,12 @@ def main():
                 result = client.pay_invoice(payment_request)
                 print_json(result)
             
-            elif command in ["7", "bot-sim"]:                print_header("Bot Simulator")                print("Choose mode:")                print("  1. Compliance Check (read policies)")                print("  2. Payment Bot (auto-generate and pay)")                mode = input("Enter mode (1-2): ").strip()                if mode == "2":                    run_payment_bot()                else:                    run_bot_simulator()
+            elif command in ["7", "bot-sim"]:
+                bot_mode = input("Choose mode (1=Compliance, 2=Payment Bot): ").strip()
+                if bot_mode == "2":
+                    run_payment_bot()
+                else:
+                    run_bot_simulator()
             
             elif command in ["8", "test-rate", "test"]:
                 test_rate_limiting()
