@@ -617,16 +617,14 @@ def generate_image(body_data, client_ip=None):
         if not api_token:
             return error_response(500, "REPLICATE_API_TOKEN not set")
         
-        # Map model names to Replicate model identifiers
-        # Format: owner/model (Replicate will use the latest version)
+        # Map model names to Replicate versions
+        # Versions verified from https://replicate.com
         model_map = {
             # Bytedance Seedream 4.5 (excellent quality, 4K support)
-            # See: https://replicate.com/bytedance/seedream-4.5
             'seedream-4.5': 'bytedance/seedream-4.5',
         }
         
         model_version = model_map.get(model, model)
-        print(f"🎨 Using model: {model_version}")
         
         # Call Replicate API directly using requests
         import requests
@@ -796,11 +794,10 @@ def list_models():
     """List available models."""
     try:
         # Calculate actual user cost (with 25% markup)
-        # DISABLED:         from billing import calculate_image_price
-        # DISABLED:         pricing = calculate_image_price(num_images=1)
-        # DISABLED:         user_cost_per_image = pricing['your_price_usd']
-        # DISABLED:         
-        user_cost_per_image = 0.05  # Use default pricing
+        from billing import calculate_image_price
+        pricing = calculate_image_price(num_images=1)
+        user_cost_per_image = pricing['your_price_usd']
+        
         models = [
             # Bytedance Seedream 4.5 (excellent quality, 4K support)
             {
