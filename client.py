@@ -544,7 +544,11 @@ def test_rate_limiting():
             print(f"  ✅ Invoice created (NOT paying)")
             print(f"     Amount: {result['invoice']['amount_sats']} sats (${result['invoice']['price_usd']:.4f})")
             print(f"     Unpaid count: {i}/3")
-            unpaid_invoices.append(result['invoice']['payment_hash'])
+            print(f"     Payment Request: {result['invoice']['payment_request']}")
+            unpaid_invoices.append({
+                'payment_hash': result['invoice']['payment_hash'],
+                'payment_request': result['invoice']['payment_request']
+            })
             results.append({"phase": 1, "request": i, "status": "allowed"})
         else:
             print(f"  ⚠️  Unexpected response")
@@ -628,6 +632,27 @@ def test_rate_limiting():
     print("   - Unpaid count decreases immediately")
     print("   - Rate limits loosen right away")
     print()
+
+    # Show how to pay the invoices
+    if len(unpaid_invoices) > 0:
+        print("="*80)
+        print("  How to Pay These Invoices & Unblock Yourself")
+        print("="*80)
+        print()
+        print("You can pay the invoices created above using the client:\n")
+
+        for idx, invoice in enumerate(unpaid_invoices, 1):
+            payment_request = invoice.get('payment_request', '')
+            if payment_request:
+                print(f"Invoice {idx}:")
+                print(f"  python client.py pay '{payment_request}'")
+                print()
+
+        print("Or pay them with your Lightning wallet by scanning the QR code.")
+        print()
+        print("Once paid, your unpaid_invoices counter will decrease,")
+        print("and you'll be unblocked immediately!")
+        print()
 
 
 def run_payment_bot():
