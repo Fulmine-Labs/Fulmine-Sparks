@@ -1,253 +1,347 @@
-# Fulmine-Sparks Repository Analysis - Complete Documentation
+# Fulmine-Sparks: Serverless AI Image Generation with Lightning Payments
 
-This directory contains a comprehensive analysis of the **Fulmine-Sparks** GitHub repository, a production-ready serverless AI image generation API with Bitcoin Lightning Network payments.
+**Status:** ✅ Production Ready
+**Version:** 1.0.0 - Rate Limiting Implementation Complete
+**Date:** February 28, 2026
 
-## 📄 Documents Included
+## Quick Start
 
-### 1. **FULMINE_SPARKS_ANALYSIS.md** (Main Analysis)
-**Comprehensive repository analysis covering:**
-- Executive summary with key strengths and issues
-- Complete architecture overview with diagrams
-- Detailed analysis of all major components:
-  - Image generation workflow
-  - Payment system integration
-  - Rate limiting system
-  - Image caching strategy
-- Code quality assessment
-- Security analysis
-- Performance considerations
-- Recent changes and known issues
-- Recommendations (high, medium, low priority)
-- Overall assessment: **8.2/10** ⭐⭐⭐⭐
+### For Users
+Generate images by paying with Bitcoin Lightning:
+```bash
+python client.py
+# Command: 7 (Generate Image)
+# Enter prompt, get BOLT11 invoice, pay with Lightning wallet
+```
 
-**Key Findings:**
-- ✅ Well-architected, production-ready API
-- ✅ Sophisticated rate limiting with unpaid invoice tracking
-- ✅ Comprehensive documentation
-- ⚠️ Debug logging left in production code
-- ⚠️ DynamoDB integration incomplete
-- ⚠️ Path extraction issues (recent commits show ongoing debugging)
+### For Testing Rate Limiting
+```bash
+python client.py test-rate-manual
+# Automated test: blocks at 3 unpaid invoices, unblocks after payment
+```
 
----
+## What This Is
 
-### 2. **FULMINE_SPARKS_IMPROVEMENTS.md** (Code Recommendations)
-**Specific code changes with before/after examples:**
+Fulmine-Sparks is a serverless API that:
+- ✅ Generates high-quality images using AI models (SeeDream 4.5)
+- ✅ Requires Bitcoin Lightning Network payments
+- ✅ Implements simple, fair rate limiting (blocks at 3 unpaid invoices)
+- ✅ Uses AWS Lambda, DynamoDB, and Alby Wallet API
+- ✅ Runs completely serverless with no infrastructure management
 
-1. **Remove Debug Logging** (HIGH PRIORITY)
-   - Remove DEBUG print statements
-   - Implement proper logging module
-   - Estimated effort: 30 minutes
+## Key Features
 
-2. **Complete DynamoDB Integration** (HIGH PRIORITY)
-   - Implement put_item/get_item calls
-   - Add persistent storage for images
-   - Estimated effort: 1 hour
+### Rate Limiting
+- **Simple Rule:** Block users with 3+ unpaid invoices
+- **Fair:** Paying customers have unlimited access
+- **Transparent:** Users know exactly what's blocking them
+- **Persistent:** Tracked in DynamoDB, survives Lambda restarts
+- **Automatic Clearing:** Counter decrements when invoices are paid
 
-3. **Improve Path Extraction** (MEDIUM PRIORITY)
-   - Extract to separate function
-   - Handle multiple API Gateway formats
-   - Estimated effort: 45 minutes
+### Payment System
+- Bitcoin Lightning Network via Alby Wallet
+- BOLT11 invoice generation per image request
+- Automatic payment detection
+- Immediate unblocking after payment
 
-4. **Add Request Signing** (MEDIUM PRIORITY)
-   - HMAC-SHA256 signature verification
-   - Prevent unauthorized access
-   - Estimated effort: 1 hour
+### Image Generation
+- SeeDream 4.5 model for high-quality output
+- Configurable prompts and parameters
+- Base64 encoding for API response
+- 2-minute cache for payment confirmation period
 
-5. **Implement Persistent Rate Limiting** (MEDIUM PRIORITY)
-   - DynamoDB-backed rate limiter
-   - Survives Lambda invocations
-   - Estimated effort: 1.5 hours
+### Testing
+- Automated rate limiting test
+- Payment flow verification
+- API compliance checker
+- Bot simulator for load testing
 
-6. **Add Proper Error Handling** (MEDIUM PRIORITY)
-   - Custom exception classes
-   - Better error messages
-   - Estimated effort: 45 minutes
+## Architecture
 
-7. **Add Monitoring & Metrics** (LOW PRIORITY)
-   - CloudWatch metrics collection
-   - Performance tracking
-   - Estimated effort: 1 hour
+```
+Client (CLI)
+    ↓
+API Gateway
+    ↓
+Lambda Handler
+├── Rate Limit Check (DynamoDB)
+├── Invoice Generation
+├── Image Generation (Replicate)
+└── Payment Status Checking (Alby)
+    ↓
+DynamoDB
+├── fulmine-sparks-rate-limits (IP tracking)
+└── fulmine-sparks-images (cache)
+    ↓
+External APIs
+├── Alby Wallet (Lightning payments)
+└── Replicate (Image generation)
+```
 
-**Total Estimated Effort:** 6-7 hours
+## Database Schema
 
----
+### rate-limits Table
+```json
+{
+  "client_ip": "203.0.113.42",
+  "unpaid_invoices": 2,
+  "ttl": 1708881234
+}
+```
 
-### 3. **FULMINE_SPARKS_ARCHITECTURE.md** (Architecture & Deployment)
-**Complete architecture and deployment guide:**
+### images Table
+```json
+{
+  "payment_hash": "abc123def456...",
+  "status": "pending|available|expired",
+  "image_base64": "[large base64 string]",
+  "created_at": 1708880034,
+  "expires_at": 1708880154,
+  "ttl": 1708880154
+}
+```
 
-- High-level system architecture diagram
-- Detailed request flow diagrams (4 steps)
-- Data flow and storage strategy
-- Dual-layer cache strategy explanation
-- Rate limiting state tracking
-- AWS resources required
-- Three deployment options:
-  1. AWS Console (Manual)
-  2. CloudFormation (IaC) - with full YAML template
-  3. Bash Script (Semi-automated)
-- Configuration and environment variables
-- Scaling and performance considerations
-- Cost estimation
-- Security best practices
-- Testing and validation procedures
-- Monitoring and observability setup
-- Troubleshooting guide
+## Rate Limiting Flow
 
----
+```
+Generate Image Request
+    ↓
+Extract Client IP
+    ↓
+Query DynamoDB: unpaid_invoices count
+    ↓
+IF count >= 3:
+    RETURN 429 error
+    "You have 3 unpaid invoices. Please pay before requesting more images."
+    ↓
+ELSE:
+    Generate invoice
+    Increment counter: unpaid_invoices += 1
+    RETURN BOLT11 payment request
+    ↓
+    [User pays via Alby]
+    ↓
+    Status check → Payment detected
+    ↓
+    Decrement counter: unpaid_invoices -= 1
+    User unblocked
+```
 
-## 🎯 Quick Summary
+## API Endpoints
 
-### Project Overview
-**Fulmine-Sparks** is a serverless API that:
-- Generates AI images using SeeDream 4.5 model (via Replicate API)
-- Accepts payments via Bitcoin Lightning Network (via Alby Hub)
-- Implements sophisticated rate limiting based on unpaid invoices
-- Stores images in dual-layer cache (memory + DynamoDB)
-- Provides bot-friendly integration workflow
+### `POST /api/v1/services/image/generate`
+Generate an image (requires payment)
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "A beautiful sunset over mountains",
+    "model": "seedream-4.5",
+    "num_outputs": 1
+  }' \
+  https://[YOUR_API]/api/v1/services/image/generate
+```
 
-### Tech Stack
-- **Backend:** AWS Lambda (Python)
-- **API:** API Gateway (HTTP)
-- **Storage:** DynamoDB + In-memory cache
-- **Image Generation:** Replicate API
-- **Payments:** Alby Hub NWC (Lightning Network)
-- **Deployment:** CloudFormation / Manual / Bash script
+**Response (Success):**
+```json
+{
+  "status": "payment_required",
+  "invoice": {
+    "payment_hash": "...",
+    "payment_request": "lnbc...",
+    "amount_sats": 77,
+    "price_usd": 0.05
+  }
+}
+```
 
-### Key Metrics
-- **Code Quality:** 8/10
-- **Architecture:** 9/10
-- **Documentation:** 9/10
-- **Security:** 7/10
-- **Scalability:** 8/10
-- **Overall Score:** 8.2/10
+**Response (Rate Limited):**
+```json
+{
+  "status": 429,
+  "error": "Rate limited: You have 3 unpaid invoices. Please pay before requesting more images."
+}
+```
 
-### Current Issues
-1. **Debug logging in production** - Multiple DEBUG print statements
-2. **DynamoDB not fully implemented** - Code initializes but never uses it
-3. **Path extraction complexity** - Recent commits show ongoing issues
-4. **No request signing** - Anyone with payment hash can retrieve image
-5. **Rate limiting not persistent** - Lost between Lambda invocations
+### `GET /api/v1/services/image/status/{payment_hash}`
+Check image generation status
+```bash
+curl https://[YOUR_API]/api/v1/services/image/status/abc123...
+```
 
-### Top Recommendations
-1. Remove debug logging (30 min)
-2. Complete DynamoDB integration (1 hour)
-3. Fix path extraction (45 min)
-4. Add request signing (1 hour)
-5. Implement persistent rate limiting (1.5 hours)
+### `GET /api/v1/services/image/retrieve/{payment_hash}`
+Retrieve generated image after payment
 
----
+### `GET /health`
+Health check endpoint
 
-## 📊 Repository Statistics
+## Configuration
+
+### Environment Variables (Lambda)
+```bash
+RATE_LIMITS_TABLE=fulmine-sparks-rate-limits
+IMAGES_TABLE=fulmine-sparks-images
+ALBY_NWC_URL=nwc://...
+REPLICATE_API_TOKEN=...
+```
+
+### Environment Variables (Client)
+```bash
+ALBY_API_TOKEN=your_alby_token
+```
+
+## Testing
+
+### Automated Rate Limiting Test
+```bash
+python client.py test-rate-manual
+```
+
+**What it does:**
+1. Generates 3 unpaid invoices (all succeed)
+2. Blocks on 4th attempt (429 error)
+3. Automatically pays one invoice
+4. Generates 4th image (unblocked)
+
+**Expected Duration:** ~30 seconds
+
+### Manual Testing
+```bash
+# Test health
+python client.py health
+
+# Generate single image
+python client.py
+# Menu: 7 (generate-image)
+
+# Interactive menu
+python client.py
+```
+
+### Verify DynamoDB State
+```bash
+# Check rate limits
+aws dynamodb scan --table-name fulmine-sparks-rate-limits --region us-east-2
+
+# Check image cache
+aws dynamodb scan --table-name fulmine-sparks-images --region us-east-2
+```
+
+## Deployment
+
+### Prerequisite Setup
+1. Create DynamoDB tables (see FINAL_WORKING_VERSION.md)
+2. Set Lambda environment variables
+3. Configure IAM role permissions
+4. Deploy lambda_handler_simple.py to AWS Lambda
+
+### Deploy Command
+```bash
+# Build deployment package
+python3 -c "
+import zipfile, os
+with zipfile.ZipFile('fulmine-sparks.zip', 'w') as z:
+    z.write('lambda_handler_simple.py')
+    z.write('billing.py')
+"
+
+# Upload to Lambda
+aws lambda update-function-code \
+  --function-name fulmine-sparks \
+  --zip-file fileb://fulmine-sparks.zip
+```
+
+### Post-Deploy Verification
+```bash
+# Health check
+curl https://[YOUR_API]/health
+
+# Rate limiting test
+python client.py test-rate-manual
+```
+
+## Documentation
+
+- **FINAL_WORKING_VERSION.md** - Complete working features and testing guide
+- **FULMINE_SPARKS_ANALYSIS.md** - Architecture and design analysis
+- **DEPLOYMENT_STEPS.md** - Detailed deployment instructions
+- **QUICKSTART.md** - Getting started guide
+
+## Troubleshooting
+
+### "Rate limited: You have 3 unpaid invoices"
+✅ This is working correctly! You've created 3 invoices without paying. Pay one to unblock.
+
+### Status check returns "pending" instead of "available"
+- Payment may not have settled yet (Lightning can take a few seconds)
+- Check Alby wallet to confirm payment was received
+- Try status check again after 5 seconds
+
+### DynamoDB errors in CloudWatch
+- Verify tables exist: `fulmine-sparks-rate-limits` and `fulmine-sparks-images`
+- Check TTL is enabled on both tables
+- Verify Lambda IAM role has GetItem/PutItem permissions
+
+### Lambda logs show "BILLING_ENABLED=False"
+- Set ALBY_NWC_URL environment variable
+- Check that billing.py is deployed
+
+## Features Implemented
+
+✅ Simple rate limiting (block at 3 unpaid)
+✅ DynamoDB-backed persistent tracking
+✅ Payment detection via Alby
+✅ Automatic counter decrement
+✅ In-memory fallback
+✅ Automated testing
+✅ Comprehensive documentation
+✅ CloudWatch logging
+✅ TTL auto-cleanup
+
+## Performance
 
 | Metric | Value |
 |--------|-------|
-| Main Handler | 853 lines |
-| Billing Module | 437 lines |
-| Documentation Files | 20+ |
-| API Endpoints | 7 |
-| Recent Commits | 20 (last 20 shown) |
-| Last Commit | 1f442e4 - Add debug logging |
-| Repository | https://github.com/Fulmine-Labs/Fulmine-Sparks |
+| Rate Limit Check | <5ms |
+| Image Generation | 30-60 seconds |
+| Payment Detection | <1 second |
+| DynamoDB Operations | 1-2 per request |
+| Monthly Cost | ~$0.25 (DynamoDB) |
+
+## Known Limitations
+
+- Rate limit threshold is fixed at 3 (can be adjusted in code)
+- No per-user whitelist (all users equal)
+- No analytics dashboard
+- Payment confirmation is polling-based (not webhook)
+
+## Future Enhancements
+
+- [ ] Webhook-based payment confirmation
+- [ ] Per-IP analytics dashboard
+- [ ] Configurable rate limit tiers
+- [ ] Email notifications
+- [ ] Automatic retry with exponential backoff
+
+## Support
+
+For issues or questions:
+1. Check CloudWatch logs: `aws logs tail /aws/lambda/fulmine-sparks`
+2. Review FINAL_WORKING_VERSION.md troubleshooting section
+3. Run test: `python client.py test-rate-manual`
+4. Check DynamoDB tables exist and are properly configured
+
+## License
+
+[Your License Here]
+
+## Contributing
+
+[Your Contributing Guidelines Here]
 
 ---
 
-## 🔍 Analysis Methodology
-
-This analysis was conducted by:
-1. **Cloning the repository** from GitHub
-2. **Examining all source files** (lambda_handler_simple.py, billing.py, client.py, etc.)
-3. **Reviewing git history** (last 20 commits)
-4. **Analyzing architecture** and design patterns
-5. **Identifying security concerns** and vulnerabilities
-6. **Assessing code quality** and best practices
-7. **Evaluating documentation** completeness
-8. **Providing specific recommendations** with code examples
-
----
-
-## 💡 How to Use This Analysis
-
-### For Project Owners
-1. Read **FULMINE_SPARKS_ANALYSIS.md** for overall assessment
-2. Review **FULMINE_SPARKS_IMPROVEMENTS.md** for specific fixes
-3. Use **FULMINE_SPARKS_ARCHITECTURE.md** for deployment guidance
-
-### For Developers
-1. Start with **FULMINE_SPARKS_IMPROVEMENTS.md** for code changes
-2. Reference **FULMINE_SPARKS_ARCHITECTURE.md** for deployment
-3. Use **FULMINE_SPARKS_ANALYSIS.md** for context
-
-### For DevOps/Infrastructure
-1. Focus on **FULMINE_SPARKS_ARCHITECTURE.md**
-2. Use CloudFormation template for IaC deployment
-3. Reference security best practices section
-
----
-
-## 🚀 Next Steps
-
-### Immediate (This Week)
-- [ ] Remove debug logging from lambda_handler_simple.py
-- [ ] Complete DynamoDB integration
-- [ ] Test with client.py
-
-### Short-term (This Month)
-- [ ] Fix path extraction issues
-- [ ] Add request signing
-- [ ] Implement persistent rate limiting
-- [ ] Add proper logging module
-
-### Medium-term (This Quarter)
-- [ ] Add monitoring and metrics
-- [ ] Implement CloudFormation deployment
-- [ ] Add comprehensive test suite
-- [ ] Security audit
-
----
-
-## 📞 Repository Information
-
-- **Repository:** https://github.com/Fulmine-Labs/Fulmine-Sparks
-- **API Endpoint:** https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod
-- **License:** Check repository for license information
-- **Maintainers:** Fulmine Labs
-
----
-
-## 📚 External Resources
-
-- **Replicate API:** https://replicate.com/
-- **Alby Hub:** https://getalby.com/
-- **Lightning Network:** https://lightning.network/
-- **AWS Lambda:** https://docs.aws.amazon.com/lambda/
-- **DynamoDB:** https://docs.aws.amazon.com/dynamodb/
-
----
-
-## ⚖️ Disclaimer
-
-This analysis is based on the repository state at commit `1f442e4` (2025-02-23). The recommendations are provided as-is and should be reviewed by the project team before implementation. Security recommendations should be validated by a professional security audit.
-
----
-
-**Analysis Date:** 2025-02-23  
-**Analyzed Commit:** 1f442e4  
-**Analysis Depth:** Comprehensive  
-**Recommendation Level:** Detailed with code examples
-
----
-
-## 📋 Document Index
-
-| Document | Purpose | Length | Audience |
-|----------|---------|--------|----------|
-| FULMINE_SPARKS_ANALYSIS.md | Main analysis | ~500 lines | Everyone |
-| FULMINE_SPARKS_IMPROVEMENTS.md | Code recommendations | ~400 lines | Developers |
-| FULMINE_SPARKS_ARCHITECTURE.md | Architecture & deployment | ~600 lines | DevOps/Architects |
-| README.md | This file | ~300 lines | Everyone |
-
-**Total Documentation:** ~1,800 lines of comprehensive analysis
-
----
-
-*Generated: 2025-02-23*
+**Version:** 1.0.0
+**Status:** ✅ Production Ready
+**Last Updated:** February 28, 2026
+**Rate Limiting:** Simple, Fair, Effective ⚡

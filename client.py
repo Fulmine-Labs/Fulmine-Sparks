@@ -589,7 +589,11 @@ def test_rate_limiting_manual():
             time.sleep(1)
             # Check status using ORIGINAL invoice's payment_hash, not the payment transaction hash
             status_result = client.get_image_status(invoice_to_pay['payment_hash'])
-            print(f"✅ Payment confirmed! Unpaid count decremented.")
+            print(f"   Status result: {json.dumps(status_result, indent=2)}")
+            if status_result.get("status") == "available":
+                print(f"✅ Payment confirmed! Status is 'available' - rate limit should be decremented.")
+            else:
+                print(f"⚠️  Status check returned: {status_result.get('status')} (expected 'available')")
         else:
             print(f"❌ Payment failed: {pay_result.get('error')}")
             return

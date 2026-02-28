@@ -15,7 +15,7 @@ from datetime import datetime
 # In-memory cache for generated images
 # Format: {payment_hash: {'image_base64': [...], 'status': 'pending'|'available'|'expired', 'created_at': timestamp, 'expires_at': timestamp, 'polling_started': bool}}
 IMAGE_CACHE = {}
-CACHE_DURATION = 15  # Keep images for 15 seconds (Lightning payments settle in ~1-5 seconds)
+CACHE_DURATION = 120  # Keep images for 2 minutes (allows time for testing)
 POLLING_DURATION = 5  # Poll for payment for 5 seconds (quick check, don't block response)
 
 # IP-based tracking for unpaid invoices
@@ -457,13 +457,20 @@ def lambda_handler(event, context):
             payment_hash = path.split('/api/v1/services/image/status/')[-1]
             # Create billing client for payment check
             billing_client = None
+            print(f"DEBUG: Status endpoint called - BILLING_ENABLED={BILLING_ENABLED}")
             if BILLING_ENABLED:
                 try:
                     alby_nwc_url = os.getenv('ALBY_NWC_URL')
+                    print(f"DEBUG: ALBY_NWC_URL={'SET' if alby_nwc_url else 'NOT SET'}")
                     if alby_nwc_url:
                         billing_client = AlbyBillingClient(nwc_url=alby_nwc_url)
+                        print(f"DEBUG: Billing client created successfully")
+                    else:
+                        print(f"DEBUG: ALBY_NWC_URL not set, skipping billing client")
                 except Exception as e:
                     print(f"⚠️  Could not create billing client: {str(e)}")
+            else:
+                print(f"DEBUG: BILLING_ENABLED is False, skipping billing client creation")
             return get_image_status_endpoint(payment_hash, billing_client)
         
         elif path.startswith('/api/v1/services/image/retrieve/') and http_method == 'GET':
@@ -508,20 +515,30 @@ def get_image_status_endpoint(payment_hash, billing_client=None):
             return success_response(result)
         
         # If image is still pending, do a quick payment check
-        if status == "pending" and billing_client:
-            print(f"🔄 Quick payment check for pending image: {payment_hash[:16]}...")
-            try:
-                invoice_status = billing_client.get_invoice(payment_hash)
-                if "error" not in invoice_status:
-                    if invoice_status.get('settled') or invoice_status.get('state') == 'SETTLED':
-                        print(f"✅ Payment detected on status check: {payment_hash[:16]}...")
-                        mark_image_available(payment_hash)
-                        status = "available"
-                        
-                        # Track payment for rate limiting
-                        track_payment_confirmed(payment_hash)
-            except Exception as e:
-                print(f"⚠️  Error checking payment on status endpoint: {str(e)}")
+        print(f"DEBUG: Image status={status}, billing_client={'available' if billing_client else 'None'}")
+        if status == "pending":
+            if billing_client:
+                print(f"🔄 Quick payment check for pending image: {payment_hash[:16]}...")
+                try:
+                    invoice_status = billing_client.get_invoice(payment_hash)
+                    if "error" not in invoice_status:
+                        print(f"DEBUG: Invoice status: {invoice_status}")
+                        if invoice_status.get('settled') or invoice_status.get('state') == 'SETTLED':
+                            print(f"✅ Payment detected on status check: {payment_hash[:16]}...")
+                            mark_image_available(payment_hash)
+                            status = "available"
+
+                            # Track payment for rate limiting
+                            print(f"DEBUG: Calling track_payment_confirmed for {payment_hash[:16]}...")
+                            track_payment_confirmed(payment_hash)
+                        else:
+                            print(f"DEBUG: Payment not settled yet. Invoice status: {invoice_status}")
+                    else:
+                        print(f"DEBUG: Error in invoice status: {invoice_status}")
+                except Exception as e:
+                    print(f"⚠️  Error checking payment on status endpoint: {str(e)}")
+            else:
+                print(f"⚠️  Image is pending but billing_client is None - cannot check payment")
         
         result = {
             "status": status,
