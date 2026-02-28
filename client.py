@@ -504,15 +504,15 @@ Crawl-delay: 1
 
 
 def test_rate_limiting_manual():
-    """Interactive test: Generate unpaid invoices, get blocked, then unblock by paying"""
-    print_header("Manual Rate Limiting Test - Full Workflow")
+    """Automated test: Generate unpaid invoices, get blocked, pay one, then unblock"""
+    print_header("Rate Limiting Test - Full Cycle (Automated)")
 
     client = FulmineSparkClient()
 
-    print("This test lets you manually test the full rate limit cycle:")
+    print("This test automatically tests the full rate limit cycle:")
     print("1. Generate 3 unpaid invoices")
     print("2. Get blocked on 4th attempt")
-    print("3. Manually pay one invoice")
+    print("3. Automatically pay one invoice")
     print("4. Verify unblocking\n")
 
     prompt = input("Enter a test prompt (or press Enter for default): ").strip()
@@ -923,8 +923,8 @@ def main():
     print("  5. retrieve   - Retrieve image")
     print("  6. pay        - Pay an invoice")
     print("  7. bot-sim    - Run bot simulator (mock)")
-    print("  8. test-rate  - Test rate limiting (auto)")
-    print("  9. test-rate-manual - Test rate limiting (interactive)")
+    print("  8. test-rate  - Test rate limiting (auto, shows all invoices)")
+    print("  9. test-rate-manual - Test rate limiting (auto, pays one invoice)")
     print("  10. exit       - Exit the client")
     print()
     
