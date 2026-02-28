@@ -18,20 +18,12 @@ IMAGE_CACHE = {}
 CACHE_DURATION = 15  # Keep images for 15 seconds (Lightning payments settle in ~1-5 seconds)
 POLLING_DURATION = 5  # Poll for payment for 5 seconds (quick check, don't block response)
 
-# IP-based rate limiting with progressive penalties
-# Format: {ip: {'requests': [timestamp, ...], 'unpaid_invoices': count, 'blocked_until': timestamp}}
+# IP-based tracking for unpaid invoices
+# Format: {ip: {'unpaid_invoices': count}}
 IP_TRACKING = {}
-RATE_LIMIT_WINDOW = 60  # 1 minute window for tracking requests
 
-# Progressive rate limiting based on unpaid invoices
-RATE_LIMITS = {
-    0: {"requests_per_minute": 3, "description": "normal"},
-    1: {"requests_per_minute": 2, "description": "1 unpaid invoice"},
-    3: {"requests_per_minute": 1, "description": "2-3 unpaid invoices"},
-    5: {"requests_per_minute": 0.5, "description": "4-5 unpaid invoices"},
-    10: {"requests_per_minute": 0.2, "description": "6-10 unpaid invoices"},
-    float('inf'): {"requests_per_minute": 0, "description": "11+ unpaid invoices - blocked"}
-}
+# Simple rate limiting: block at 3 unpaid invoices
+UNPAID_INVOICE_LIMIT = 3
 
 # Mapping of payment_hash to IP for tracking
 PAYMENT_HASH_TO_IP = {}
@@ -140,88 +132,67 @@ def get_client_ip(event):
 
 
 def cleanup_old_tracking():
-    """Remove old tracking data"""
-    current_time = time.time()
-    ips_to_delete = []
-    
-    for ip, data in IP_TRACKING.items():
-        # Remove requests older than rate limit window
-        data['requests'] = [t for t in data.get('requests', []) if current_time - t < RATE_LIMIT_WINDOW]
-        
-        # Delete IP if no recent activity and no unpaid invoices
-        if not data['requests'] and data.get('unpaid_invoices', 0) == 0:
-            ips_to_delete.append(ip)
-    
+    """Remove tracking data for IPs with no unpaid invoices (optional cleanup)"""
+    ips_to_delete = [ip for ip, data in IP_TRACKING.items() if data.get('unpaid_invoices', 0) == 0]
     for ip in ips_to_delete:
         del IP_TRACKING[ip]
-        print(f"🗑️  Cleaned up tracking for IP: {ip}")
-
-
-def get_rate_limit_for_ip(ip):
-    """Get rate limit based on unpaid invoices"""
-    if ip not in IP_TRACKING:
-        return RATE_LIMITS[0]
-    
-    unpaid_count = IP_TRACKING[ip].get('unpaid_invoices', 0)
-    
-    # Find the appropriate rate limit
-    for threshold in sorted(RATE_LIMITS.keys()):
-        if unpaid_count <= threshold:
-            return RATE_LIMITS[threshold]
-    
-    return RATE_LIMITS[float('inf')]
 
 
 def check_rate_limit(ip):
-    """Check if IP is within rate limit. Returns (allowed, reason)"""
-    cleanup_old_tracking()
-    current_time = time.time()
-    
-    # Initialize IP tracking if needed
-    if ip not in IP_TRACKING:
-        IP_TRACKING[ip] = {
-            'requests': [],
-            'unpaid_invoices': 0,
-            'blocked_until': None
-        }
-    
-    data = IP_TRACKING[ip]
-    
-    # Check if IP is blocked
-    if data.get('blocked_until') and current_time < data['blocked_until']:
-        return False, f"IP blocked until {datetime.fromtimestamp(data['blocked_until']).isoformat()}"
-    
-    # Clean up old requests
-    data['requests'] = [t for t in data.get('requests', []) if current_time - t < RATE_LIMIT_WINDOW]
-    
-    # Get rate limit for this IP
-    rate_limit = get_rate_limit_for_ip(ip)
-    max_requests = int(rate_limit['requests_per_minute'])
-    
-    # Check if at limit (0 means blocked)
-    if max_requests == 0:
-        return False, f"Rate limited: {rate_limit['description']}"
-    
-    if len(data['requests']) >= max_requests:
-        return False, f"Rate limited: {rate_limit['description']} ({len(data['requests'])}/{max_requests} requests/min)"
-    
-    # Record this request
-    data['requests'].append(current_time)
-    
-    return True, f"Allowed: {rate_limit['description']}"
+    """Check if IP has too many unpaid invoices. Returns (allowed, reason)"""
+    unpaid_invoices = 0
+
+    # Try DynamoDB first (persistent)
+    if DYNAMODB_AVAILABLE:
+        try:
+            response = rate_limits_table.get_item(Key={'client_ip': ip})
+            data = response.get('Item', {})
+            unpaid_invoices = data.get('unpaid_invoices', 0)
+        except Exception as e:
+            print(f"⚠️  Warning checking unpaid invoices: {str(e)}")
+            # Continue with fallback below
+
+    # Fallback: in-memory tracking
+    if unpaid_invoices == 0 and ip in IP_TRACKING:
+        unpaid_invoices = IP_TRACKING[ip].get('unpaid_invoices', 0)
+
+    # Block if 3 or more unpaid invoices
+    if unpaid_invoices >= 3:
+        return False, f"You have {unpaid_invoices} unpaid invoices. Please pay before requesting more images."
+
+    return True, f"Allowed ({unpaid_invoices} unpaid invoice(s))"
 
 
 def track_invoice_created(payment_hash, ip):
     """Track that an invoice was created from this IP"""
-    if ip not in IP_TRACKING:
-        IP_TRACKING[ip] = {
-            'requests': [],
-            'unpaid_invoices': 0,
-            'blocked_until': None
-        }
-    
-    IP_TRACKING[ip]['unpaid_invoices'] += 1
     PAYMENT_HASH_TO_IP[payment_hash] = ip
+
+    # Try to update DynamoDB
+    if DYNAMODB_AVAILABLE:
+        try:
+            current_time = time.time()
+            response = rate_limits_table.get_item(Key={'client_ip': ip})
+            data = response.get('Item', {})
+            unpaid_invoices = data.get('unpaid_invoices', 0) + 1
+
+            rate_limits_table.put_item(
+                Item={
+                    'client_ip': ip,
+                    'unpaid_invoices': unpaid_invoices,
+                    'ttl': int(current_time + 86400)  # Keep for 24 hours
+                }
+            )
+
+            print(f"📊 Invoice created for {ip}: {unpaid_invoices} unpaid invoice(s)")
+            return
+        except Exception as e:
+            print(f"⚠️  Error tracking invoice: {str(e)}")
+
+    # Fallback: in-memory tracking
+    if ip not in IP_TRACKING:
+        IP_TRACKING[ip] = {'unpaid_invoices': 0}
+
+    IP_TRACKING[ip]['unpaid_invoices'] += 1
     
     unpaid = IP_TRACKING[ip]['unpaid_invoices']
     print(f"📊 Invoice created for {ip}: {unpaid} unpaid invoice(s)")
@@ -231,15 +202,38 @@ def track_payment_confirmed(payment_hash):
     """Track that a payment was confirmed"""
     if payment_hash not in PAYMENT_HASH_TO_IP:
         return
-    
+
     ip = PAYMENT_HASH_TO_IP[payment_hash]
-    
-    if ip in IP_TRACKING and IP_TRACKING[ip]['unpaid_invoices'] > 0:
+
+    # Try to update DynamoDB
+    if DYNAMODB_AVAILABLE:
+        try:
+            response = rate_limits_table.get_item(Key={'client_ip': ip})
+            data = response.get('Item', {})
+            unpaid_invoices = max(0, data.get('unpaid_invoices', 1) - 1)
+
+            rate_limits_table.put_item(
+                Item={
+                    'client_ip': ip,
+                    'unpaid_invoices': unpaid_invoices,
+                    'ttl': int(time.time() + 86400)
+                }
+            )
+
+            print(f"✅ Payment confirmed for {ip}: {unpaid_invoices} unpaid invoice(s) remaining")
+            del PAYMENT_HASH_TO_IP[payment_hash]
+            return
+        except Exception as e:
+            print(f"⚠️  Error updating payment: {str(e)}")
+
+    # Fallback: in-memory tracking
+    if ip in IP_TRACKING and IP_TRACKING[ip].get('unpaid_invoices', 0) > 0:
         IP_TRACKING[ip]['unpaid_invoices'] -= 1
         unpaid = IP_TRACKING[ip]['unpaid_invoices']
         print(f"✅ Payment confirmed for {ip}: {unpaid} unpaid invoice(s) remaining")
-    
-    del PAYMENT_HASH_TO_IP[payment_hash]
+
+    if payment_hash in PAYMENT_HASH_TO_IP:
+        del PAYMENT_HASH_TO_IP[payment_hash]
 
 
 def get_image_status(payment_hash):
@@ -348,11 +342,13 @@ try:
     DYNAMODB_AVAILABLE = True
     dynamodb = boto3.resource('dynamodb', region_name='us-east-2')
     IMAGES_TABLE = os.getenv('IMAGES_TABLE', 'fulmine-sparks-images')
+    RATE_LIMITS_TABLE = os.getenv('RATE_LIMITS_TABLE', 'fulmine-sparks-rate-limits')
     try:
         images_table = dynamodb.Table(IMAGES_TABLE)
-        print(f"✅ DynamoDB initialized: {IMAGES_TABLE}")
+        rate_limits_table = dynamodb.Table(RATE_LIMITS_TABLE)
+        print(f"✅ DynamoDB initialized: {IMAGES_TABLE}, {RATE_LIMITS_TABLE}")
     except Exception as e:
-        print(f"⚠️  Warning: Could not initialize DynamoDB table: {e}")
+        print(f"⚠️  Warning: Could not initialize DynamoDB tables: {e}")
         DYNAMODB_AVAILABLE = False
 except ImportError as e:
     DYNAMODB_AVAILABLE = False
