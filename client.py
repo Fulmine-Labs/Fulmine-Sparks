@@ -654,6 +654,9 @@ def test_rate_limiting():
         print("and you'll be unblocked immediately!")
         print()
 
+    input("Press Enter to return to menu...")
+    print()
+
 
 def run_payment_bot():
     """Bot that automatically generates images and pays for them"""
@@ -784,6 +787,8 @@ def run_payment_bot():
     print(f"\n{'='*80}")
     print(f"✅ Bot workflow completed successfully!")
     print(f"{'='*80}\n")
+
+    input("Press Enter to return to menu...")
 
 
 def main():
