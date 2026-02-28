@@ -586,7 +586,8 @@ def test_rate_limiting_manual():
             print(f"✅ Payment sent!")
             print("⏳ Checking payment confirmation...")
             time.sleep(1)
-            status_result = client.get_image_status(pay_result.get("payment_hash"))
+            # Check status using ORIGINAL invoice's payment_hash, not the payment transaction hash
+            status_result = client.get_image_status(invoice_to_pay['payment_hash'])
             print(f"✅ Payment confirmed! Unpaid count decremented.")
         else:
             print(f"❌ Payment failed: {pay_result.get('error')}")
