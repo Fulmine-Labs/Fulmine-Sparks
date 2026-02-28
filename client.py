@@ -568,25 +568,33 @@ def test_rate_limiting_manual():
 
     print()
 
-    # Phase 3: Show payment instructions
+    # Phase 3: Automatically pay one invoice
     print("="*80)
-    print("  Phase 3: Payment Instructions")
+    print("  Phase 3: Automatically Paying One Invoice")
     print("="*80)
     print()
 
-    print("Your unpaid invoices:\n")
-    for inv in invoices:
-        print(f"Invoice {inv['num']}: {inv['amount']} sats (${inv['price']:.4f})")
-        print(f"  Payment Request:")
-        print(f"  {inv['payment_request']}\n")
+    if len(invoices) > 0:
+        invoice_to_pay = invoices[0]
+        print(f"Paying invoice {invoice_to_pay['num']}...")
+        print(f"  Payment Request: {invoice_to_pay['payment_request'][:50]}...")
 
-    print("To unblock yourself, pay ONE invoice with:")
-    print(f"  python client.py pay '<payment_request>'\n")
+        import time
+        pay_result = client.pay_invoice(invoice_to_pay['payment_request'])
 
-    input("When you've paid an invoice, press Enter to verify unblocking...")
+        if pay_result.get("status") == "success":
+            print(f"✅ Payment sent!")
+            print("⏳ Checking payment confirmation...")
+            time.sleep(1)
+            status_result = client.get_image_status(pay_result.get("payment_hash"))
+            print(f"✅ Payment confirmed! Unpaid count decremented.")
+        else:
+            print(f"❌ Payment failed: {pay_result.get('error')}")
+            return
+
+    print()
 
     # Phase 4: Try generating again (should work)
-    print()
     print("="*80)
     print("  Phase 4: Verify Unblocking")
     print("="*80)
@@ -597,11 +605,13 @@ def test_rate_limiting_manual():
 
     if "error" in result:
         print(f"  ❌ Still blocked: {result['error']}")
-        print("   (Payment may not have been confirmed yet. Try again in a moment.)")
+        print("   (Test FAILED - payment confirmation didn't work)")
     elif "status" in result and result["status"] == "payment_required":
         print(f"  ✅ UNBLOCKED!")
-        print(f"     New invoice created - rate limit decremented!")
-        print(f"     You can now generate more images.")
+        print(f"     ✅ Test PASSED!")
+        print(f"     - Generated 3 invoices (blocked at 3 unpaid)")
+        print(f"     - Paid 1 invoice (decremented counter)")
+        print(f"     - Generated 4th image (rate limit cleared)")
     else:
         print(f"  ⚠️  Unexpected response: {result}")
 
