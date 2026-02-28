@@ -179,7 +179,7 @@ def track_invoice_created(payment_hash, ip):
                 Item={
                     'client_ip': ip,
                     'unpaid_invoices': unpaid_invoices,
-                    'ttl': int(current_time + 86400)  # Keep for 24 hours
+                    'ttl': int(current_time + 3600)  # Keep for 1 hour (matches invoice expiry)
                 }
             )
 
