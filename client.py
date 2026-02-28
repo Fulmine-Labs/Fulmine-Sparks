@@ -154,6 +154,7 @@ class FulmineSparkClient:
             return {
                 "status": "success",
                 "payment": result,
+                "payment_hash": result.get("payment_hash"),
                 "message": "Payment sent successfully!"
             }
             
@@ -981,6 +982,17 @@ def main():
                     continue
                 result = client.pay_invoice(payment_request)
                 print_json(result)
+
+                # Auto-check status to trigger payment confirmation
+                if result.get("status") == "success" and result.get("payment_hash"):
+                    print("\n⏳ Checking payment confirmation...")
+                    import time
+                    time.sleep(1)  # Brief delay for Alby to process
+                    status_result = client.get_image_status(result.get("payment_hash"))
+                    if status_result.get("status") == "available":
+                        print("✅ Payment confirmed! Rate limit decremented.")
+                    else:
+                        print(f"ℹ️  Status: {status_result.get('status')}")
             
             elif command in ["7", "bot-sim"]:
                 print_header("Bot Simulator")
@@ -1250,11 +1262,11 @@ if __name__ == "__main__":
             if len(sys.argv) < 3:
                 print("Usage: python client.py pay '<payment_request>'")
                 sys.exit(1)
-            
+
             payment_request = sys.argv[2]
             print_header("Pay Invoice")
             result = client.pay_invoice(payment_request)
-            
+
             if "error" in result:
                 print(f"❌ Error: {result['error']}")
                 sys.exit(1)
@@ -1262,6 +1274,17 @@ if __name__ == "__main__":
                 print(f"✅ {result.get('message', 'Payment sent!')}")
                 print(f"📊 Payment details:")
                 print_json(result.get('payment', {}))
+
+                # Auto-check status to trigger payment confirmation
+                if result.get("payment_hash"):
+                    print("\n⏳ Checking payment confirmation...")
+                    import time
+                    time.sleep(1)  # Brief delay for Alby to process
+                    status_result = client.get_image_status(result.get("payment_hash"))
+                    if status_result.get("status") == "available":
+                        print("✅ Payment confirmed! Rate limit decremented.")
+                    else:
+                        print(f"ℹ️  Status: {status_result.get('status')}")
         
         elif sys.argv[1] == "bot-sim":
             print_header("Bot Simulator (Mock Mode)")
