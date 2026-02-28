@@ -2,24 +2,50 @@
 REM Fulmine-Sparks API Client Runner
 REM This script runs the Python client with the Fulmine-Sparks API
 
-REM Set your Alby API Token here or it will prompt you
-REM Get it from: https://getalby.com -> Settings -> API & Extensions
+echo.
+echo ================================================================================
+echo  Fulmine-Sparks API Client
+echo ================================================================================
+echo.
+
+REM Check if ALBY_API_TOKEN is set
 if "%ALBY_API_TOKEN%"=="" (
-    set /p ALBY_API_TOKEN="Enter your ALBY_API_TOKEN (or press Enter to skip): "
+    echo ⚠️  ALBY_API_TOKEN is not set
+    echo.
+    set /p ALBY_API_TOKEN="Enter your ALBY_API_TOKEN (get from https://getalby.com - Settings - API): "
+    if "%ALBY_API_TOKEN%"=="" (
+        echo ❌ ALBY_API_TOKEN is required for payment detection!
+        pause
+        exit /b 1
+    )
+) else (
+    echo ✅ ALBY_API_TOKEN found in environment
+    echo    Token: %ALBY_API_TOKEN:~0,10%...%ALBY_API_TOKEN:~-4%
 )
 
-REM Optional: Set Alby NWC URL for invoice creation
-REM Get it from Alby Hub App Store
+echo.
 if not "%ALBY_NWC_URL%"=="" (
-    echo Using ALBY_NWC_URL: %ALBY_NWC_URL:~0,30%...
+    echo ✅ ALBY_NWC_URL found in environment
+) else (
+    echo ℹ️  ALBY_NWC_URL not set (optional - for invoice creation via NWC)
 )
+
+echo.
+echo ================================================================================
+echo.
+
+REM Set the environment variables for Python
+setlocal enabledelayedexpansion
 
 python client.py %*
 if errorlevel 1 (
     echo.
-    echo Error: Make sure you have Python 3 installed and dependencies installed
-    echo Install with: pip install requests qrcode[pil]
+    echo ❌ Error running client
     echo.
-    echo Also make sure ALBY_API_TOKEN is set for payment detection
+    echo Make sure you have:
+    echo   - Python 3 installed
+    echo   - Dependencies installed: pip install requests qrcode[pil]
+    echo   - ALBY_API_TOKEN set correctly
+    echo.
     pause
 )
