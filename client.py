@@ -632,6 +632,137 @@ def test_rate_limiting():
     print()
 
 
+def run_payment_bot():
+    """Bot that automatically generates images and pays for them"""
+    import time
+
+    client = FulmineSparkClient()
+
+    print_header("Payment Bot - Automated Image Generation & Payment")
+
+    # Get prompt
+    prompt = input("Enter prompt: ").strip()
+    if not prompt:
+        print("❌ Prompt cannot be empty!")
+        return
+
+    # Step 1: Generate image
+    print(f"\n⏳ Step 1/4: Generating image with SeeDream 4.5...")
+    print("   (This may take 10-15 seconds...)\n")
+
+    result = client.generate_image(prompt=prompt, num_outputs=1)
+
+    if "error" in result:
+        print(f"❌ Error generating image: {result['error']}")
+        return
+
+    if "status" not in result or result["status"] != "payment_required":
+        print(f"❌ Unexpected response: {result}")
+        return
+
+    print("✅ Image generated successfully!")
+
+    # Get invoice
+    invoice = result.get("invoice")
+    if not invoice:
+        print(f"❌ No invoice generated - this should not happen")
+        return
+
+    payment_hash = invoice['payment_hash']
+    payment_request = invoice['payment_request']
+
+    print(f"📝 Payment Hash: {payment_hash[:16]}...")
+    print(f"💰 Amount: {invoice['amount_sats']:,} sats (${invoice['price_usd']:.4f})")
+
+    # Step 2: Pay invoice
+    print(f"\n⏳ Step 2/4: Submitting payment...")
+
+    pay_result = client.pay_invoice(payment_request)
+
+    if "error" in pay_result:
+        print(f"❌ Error paying invoice: {pay_result['error']}")
+        return
+
+    print(f"✅ Payment submitted!")
+    print(f"   {pay_result.get('message', 'Payment sent')}")
+
+    # Step 3: Poll for image availability
+    print(f"\n⏳ Step 3/4: Polling for payment confirmation...")
+
+    max_wait_time = 300  # 5 minutes max wait
+    poll_interval = 2  # Check every 2 seconds
+    elapsed = 0
+
+    while elapsed < max_wait_time:
+        status_result = client.get_image_status(payment_hash=payment_hash)
+
+        if "error" in status_result:
+            print(f"\n❌ Error: {status_result['error']}")
+            return
+
+        status = status_result.get("status")
+
+        if status == "pending":
+            print(f"⏳ Waiting for payment confirmation... ({elapsed}s elapsed)", end='\r')
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+            continue
+
+        elif status == "available":
+            print(f"\n✅ Payment confirmed! Image is available.")
+            break
+
+        elif status == "expired":
+            print(f"\n❌ Image expired! Please generate a new image.")
+            return
+
+        else:
+            print(f"\n❌ Unknown status: {status}")
+            return
+
+    if elapsed >= max_wait_time:
+        print(f"\n⏱️  Timeout: Payment not confirmed within {max_wait_time} seconds")
+        print(f"💡 Try again later with: python3 client.py retrieve {payment_hash}")
+        return
+
+    # Step 4: Retrieve image
+    print(f"\n⏳ Step 4/4: Retrieving image...")
+
+    retrieve_result = client.retrieve_image(payment_hash=payment_hash)
+
+    if "error" in retrieve_result:
+        print(f"❌ Error retrieving image: {retrieve_result['error']}")
+        return
+
+    if retrieve_result.get("status") == "success":
+        image_base64_list = retrieve_result.get("image_base64", [])
+
+        if image_base64_list and any(image_base64_list):
+            print(f"✅ Image retrieved successfully!")
+
+            for i, base64_data in enumerate(image_base64_list, 1):
+                if base64_data:
+                    print(f"\n🖼️  Image {i}:")
+                    print(f"   Base64 length: {len(base64_data)} characters")
+
+                    # Save the image
+                    filepath = save_base64_image(base64_data)
+                    if filepath:
+                        print(f"   ✅ Saved to: {filepath}")
+                        # Open the image
+                        open_image(filepath)
+                else:
+                    print(f"\n❌ Image {i}: Failed to retrieve")
+        else:
+            print(f"❌ No images in response")
+    else:
+        print(f"❌ Unexpected response: {retrieve_result}")
+
+    print(f"\n{'='*80}")
+    print(f"✅ Bot workflow completed successfully!")
+    print(f"{'='*80}\n")
+
+
 def main():
     """Main CLI interface"""
     
@@ -824,9 +955,25 @@ def main():
                 print_json(result)
             
             elif command in ["7", "bot-sim"]:
-                print_header("Bot Simulator (Mock Mode)")
-                print("\n🤖 Running bot simulator...\n")
-                run_bot_simulator()
+                print_header("Bot Simulator")
+                print("\nSelect bot mode:")
+                print("  1. Compliance Test   - Check API compliance with llms.txt, robots.txt, and ToS")
+                print("  2. Payment Bot       - Auto-generate image and pay invoice")
+                print("  3. Cancel")
+                print()
+
+                bot_choice = input("Enter choice (1-3): ").strip()
+
+                if bot_choice in ["1", "compliance"]:
+                    print("\n🤖 Running compliance test...\n")
+                    run_bot_simulator()
+                elif bot_choice in ["2", "payment"]:
+                    print()
+                    run_payment_bot()
+                elif bot_choice in ["3", "cancel"]:
+                    continue
+                else:
+                    print("❌ Invalid choice. Please enter 1-3.")
             
             elif command in ["8", "test-rate", "test"]:
                 test_rate_limiting()
