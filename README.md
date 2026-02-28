@@ -139,7 +139,7 @@ curl -X POST \
     "model": "seedream-4.5",
     "num_outputs": 1
   }' \
-  https://[YOUR_API]/api/v1/services/image/generate
+  https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod/api/v1/services/image/generate
 ```
 
 **Response (Success):**
@@ -166,7 +166,7 @@ curl -X POST \
 ### `GET /api/v1/services/image/status/{payment_hash}`
 Check image generation status
 ```bash
-curl https://[YOUR_API]/api/v1/services/image/status/abc123...
+curl https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod/api/v1/services/image/status/abc123...
 ```
 
 ### `GET /api/v1/services/image/retrieve/{payment_hash}`
@@ -188,6 +188,52 @@ REPLICATE_API_TOKEN=...
 ### Environment Variables (Client)
 ```bash
 ALBY_API_TOKEN=your_alby_token
+```
+
+## Bot Integration
+
+### Simple Bot Example
+```python
+from fulmine_spark_client import FulmineSparkClient
+from alby import Alby
+
+# Initialize client
+client = FulmineSparkClient()
+alby = Alby(token=os.getenv("ALBY_API_TOKEN"))
+
+# Generate image
+result = client.generate_image(prompt="sunset over mountains")
+invoice = result["invoice"]["payment_request"]
+payment_hash = result["invoice"]["payment_hash"]
+
+# Pay invoice
+alby.pay_invoice(invoice)
+
+# Poll for completion
+status = client.poll_status(payment_hash, timeout=30)
+if status["status"] == "available":
+    image_base64 = client.retrieve_image(payment_hash)
+    # Save or process image
+```
+
+### Rate Limit Handling
+```python
+# Generate image - might hit rate limit
+try:
+    result = client.generate_image(prompt="...")
+except Exception as e:
+    if "429" in str(e):
+        print("Rate limited: You have 3 unpaid invoices")
+        print("Pay one invoice to unblock")
+    else:
+        raise
+```
+
+### Full Workflow with Error Handling
+```bash
+# See client.py for complete production-ready implementation
+python client.py              # Interactive menu
+python client.py test-rate-manual  # Full workflow test
 ```
 
 ## Testing
@@ -254,7 +300,7 @@ aws lambda update-function-code \
 ### Post-Deploy Verification
 ```bash
 # Health check
-curl https://[YOUR_API]/health
+curl https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod/health
 
 # Rate limiting test
 python client.py test-rate-manual
@@ -333,11 +379,31 @@ For issues or questions:
 
 ## License
 
-[Your License Here]
+MIT License - see LICENSE file for details.
 
 ## Contributing
 
-[Your Contributing Guidelines Here]
+Contributions are welcome! Please note:
+
+1. **Fork and branch:** Create a feature branch from `master`
+2. **Test thoroughly:** Run `python client.py test-rate-manual` before submitting
+3. **Keep it focused:** One feature per PR
+4. **Document changes:** Update README if needed
+5. **Security first:** Never commit secrets or API keys
+
+### Reporting Issues
+- Found a bug? Open a GitHub issue with reproducible steps
+- Security issue? See [SECURITY.md](SECURITY.md) for responsible disclosure
+- Feature request? Describe the use case and expected behavior
+
+### Development Setup
+```bash
+git clone https://github.com/Fulmine-Labs/Fulmine-Sparks.git
+cd Fulmine-Sparks
+pip install -r requirements.txt
+export ALBY_API_TOKEN=your_token_here
+python client.py
+```
 
 ---
 
