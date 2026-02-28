@@ -15,7 +15,7 @@ from datetime import datetime
 # In-memory cache for generated images
 # Format: {payment_hash: {'image_base64': [...], 'status': 'pending'|'available'|'expired', 'created_at': timestamp, 'expires_at': timestamp, 'polling_started': bool}}
 IMAGE_CACHE = {}
-CACHE_DURATION = 15  # Keep images for 15 seconds (Lightning payments settle in ~1-5 seconds)
+CACHE_DURATION = 300  # Keep images for 5 minutes (allows time for testing and payment confirmation)
 POLLING_DURATION = 5  # Poll for payment for 5 seconds (quick check, don't block response)
 
 # IP-based tracking for unpaid invoices
