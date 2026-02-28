@@ -568,15 +568,16 @@ def test_rate_limiting_manual():
 
     print()
 
-    # Phase 3: Automatically pay one invoice
+    # Phase 3: Automatically pay the most recent invoice (still fresh)
     print("="*80)
     print("  Phase 3: Automatically Paying One Invoice")
     print("="*80)
     print()
 
     if len(invoices) > 0:
-        invoice_to_pay = invoices[0]
-        print(f"Paying invoice {invoice_to_pay['num']}...")
+        # Pay the MOST RECENT invoice (invoice 3) - it's still fresh
+        invoice_to_pay = invoices[-1]
+        print(f"Paying invoice {invoice_to_pay['num']} (most recent, still fresh)...")
         print(f"  Payment Request: {invoice_to_pay['payment_request'][:50]}...")
 
         import time
