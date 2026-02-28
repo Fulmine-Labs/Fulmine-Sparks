@@ -503,13 +503,13 @@ Crawl-delay: 1
 
 
 def test_rate_limiting():
-    """Test progressive rate limiting by creating unpaid invoices"""
-    print_header("Progressive Rate Limiting Test")
-    
+    """Test rate limiting by creating unpaid invoices (blocked at 3)"""
+    print_header("Rate Limiting Test - Unpaid Invoice Counter")
+
     client = FulmineSparkClient()
-    
-    print("This test demonstrates progressive rate limiting based on unpaid invoices.")
-    print("We'll create invoices WITHOUT paying them to show how limits get stricter.\n")
+
+    print("This test creates unpaid invoices to demonstrate rate limiting.")
+    print("Rule: Blocked when unpaid_invoices >= 3\n")
     
     prompt = input("Enter a test prompt (or press Enter for default): ").strip()
     if not prompt:
@@ -520,16 +520,18 @@ def test_rate_limiting():
     unpaid_invoices = []
     results = []
     
-    # Phase 1: Create unpaid invoices
+    # Phase 1: Create 3 unpaid invoices (should be allowed)
     print("="*80)
-    print("  Phase 1: Creating Unpaid Invoices")
+    print("  Phase 1: Creating 3 Unpaid Invoices (Should Succeed)")
     print("="*80)
     print()
-    
+
+    max_unpaid_allowed = 3  # Simplified: block at 3 unpaid
+
     for i in range(1, 4):
-        print(f"Request {i} (creating unpaid invoice):")
+        print(f"Request {i}:")
         result = client.generate_image(prompt=prompt, num_outputs=1)
-        
+
         if "error" in result:
             if result.get("status") == 429:
                 print(f"  ⛔ Rate Limited!")
@@ -541,87 +543,83 @@ def test_rate_limiting():
         elif "status" in result and result["status"] == "payment_required":
             print(f"  ✅ Invoice created (NOT paying)")
             print(f"     Amount: {result['invoice']['amount_sats']} sats (${result['invoice']['price_usd']:.4f})")
-            print(f"     Payment Hash: {result['invoice']['payment_hash'][:16]}...")
+            print(f"     Unpaid count: {i}/3")
             unpaid_invoices.append(result['invoice']['payment_hash'])
             results.append({"phase": 1, "request": i, "status": "allowed"})
         else:
             print(f"  ⚠️  Unexpected response")
             results.append({"phase": 1, "request": i, "status": "unexpected"})
-        
+
         print()
     
-    # Phase 2: Try more requests with unpaid invoices
+    # Phase 2: Try 4th request (should be BLOCKED)
     print("="*80)
-    print(f"  Phase 2: Trying More Requests ({len(unpaid_invoices)} Unpaid Invoices)")
+    print(f"  Phase 2: Attempting 4th Request (Should Be Blocked)")
     print("="*80)
     print()
-    
-    if len(unpaid_invoices) > 0:
-        print(f"⚠️  You now have {len(unpaid_invoices)} unpaid invoice(s)")
-        print("   Rate limits should be MUCH stricter now!\n")
-        
-        for i in range(1, 6):
-            print(f"Request {i}:")
-            result = client.generate_image(prompt=prompt, num_outputs=1)
-            
-            if "error" in result:
-                if result.get("status") == 429:
-                    print(f"  ⛔ Rate Limited!")
-                    print(f"     {result.get('message', 'Too many requests')}")
-                    print(f"     {result.get('details', '')}")
-                    results.append({"phase": 2, "request": i, "status": "rate_limited"})
-                else:
-                    print(f"  ❌ Error: {result['error']}")
-                    results.append({"phase": 2, "request": i, "status": "error"})
-            elif "status" in result and result["status"] == "payment_required":
-                print(f"  ✅ Allowed (but you have unpaid invoices!)")
-                print(f"     Amount: {result['invoice']['amount_sats']} sats (${result['invoice']['price_usd']:.4f})")
-                unpaid_invoices.append(result['invoice']['payment_hash'])
-                results.append({"phase": 2, "request": i, "status": "allowed"})
+
+    if len(unpaid_invoices) >= 3:
+        print(f"⚠️  You now have {len(unpaid_invoices)} unpaid invoices (limit is 3)")
+        print("   Next request should be BLOCKED!\n")
+
+        print(f"Request 4:")
+        result = client.generate_image(prompt=prompt, num_outputs=1)
+
+        if "error" in result:
+            if result.get("status") == 429:
+                print(f"  ✅ BLOCKED as expected!")
+                print(f"     {result.get('message', 'Too many requests')}")
+                results.append({"phase": 2, "request": 4, "status": "rate_limited"})
             else:
-                print(f"  ⚠️  Unexpected response")
-                results.append({"phase": 2, "request": i, "status": "unexpected"})
-            
-            print()
+                print(f"  ❌ Error: {result['error']}")
+                results.append({"phase": 2, "request": 4, "status": "error"})
+        elif "status" in result and result["status"] == "payment_required":
+            print(f"  ❌ NOT BLOCKED (but should be!)")
+            print(f"     Amount: {result['invoice']['amount_sats']} sats (${result['invoice']['price_usd']:.4f})")
+            unpaid_invoices.append(result['invoice']['payment_hash'])
+            results.append({"phase": 2, "request": 4, "status": "allowed"})
+        else:
+            print(f"  ⚠️  Unexpected response")
+            results.append({"phase": 2, "request": 4, "status": "unexpected"})
+
+        print()
     
     # Summary
     print("="*80)
     print("  Test Summary")
     print("="*80)
     print()
-    
+
     phase1_allowed = sum(1 for r in results if r["phase"] == 1 and r["status"] == "allowed")
     phase1_limited = sum(1 for r in results if r["phase"] == 1 and r["status"] == "rate_limited")
-    phase2_allowed = sum(1 for r in results if r["phase"] == 2 and r["status"] == "allowed")
     phase2_limited = sum(1 for r in results if r["phase"] == 2 and r["status"] == "rate_limited")
-    
-    print("Phase 1 (Creating Unpaid Invoices):")
-    print(f"  ✅ Allowed:      {phase1_allowed}")
-    print(f"  ⛔ Rate limited: {phase1_limited}")
+    phase2_allowed = sum(1 for r in results if r["phase"] == 2 and r["status"] == "allowed")
+
+    print("Phase 1 (Creating First 3 Unpaid Invoices):")
+    print(f"  ✅ Allowed:      {phase1_allowed}/3")
+    print(f"  ⛔ Rate limited: {phase1_limited}/3")
     print()
-    
-    print(f"Phase 2 (With {len(unpaid_invoices)} Unpaid Invoices):")
+
+    print("Phase 2 (4th Request with 3 Unpaid Invoices):")
     print(f"  ✅ Allowed:      {phase2_allowed}")
-    print(f"  ⛔ Rate limited: {phase2_limited}")
+    print(f"  ⛔ Blocked:      {phase2_limited}")
     print()
-    
-    if phase2_limited > phase1_limited or (phase2_limited > 0 and phase1_limited == 0):
-        print("✅ Progressive rate limiting is working!")
-        print("   - Phase 1: Could create invoices normally")
-        print("   - Phase 2: Got rate limited with unpaid invoices")
-        print("   - Limits got STRICTER as unpaid invoices accumulated")
-    elif phase2_allowed > 0 and phase2_limited == 0:
+
+    if phase1_limited == 0 and phase2_limited == 1:
+        print("✅ Simple rate limiting is working CORRECTLY!")
+        print("   - Phase 1: First 3 invoices created successfully")
+        print("   - Phase 2: 4th request BLOCKED (as expected)")
+        print("   - Rule: Blocked when unpaid_invoices >= 3 ✓")
+    elif phase1_limited == 0 and phase2_allowed == 1:
         print("⚠️  Rate limiting may not be active")
-        print("   - Still allowing requests with unpaid invoices")
+        print("   - Allowed request at 3+ unpaid invoices (should block)")
     else:
         print("⚠️  Unexpected test results")
-    
+
     print()
-    print("💡 How Progressive Rate Limiting Works:")
-    print("   - 0 unpaid invoices:    3 requests per minute (normal)")
-    print("   - 1 unpaid invoice:     2 requests per minute")
-    print("   - 2-3 unpaid invoices:  1 request per minute")
-    print("   - 4-5 unpaid invoices:  1 request per 2 minutes")
+    print("💡 How Simple Rate Limiting Works:")
+    print("   - Unpaid invoices:  0, 1, 2           → ✅ Allowed")
+    print("   - Unpaid invoices:  3 or more         → ❌ Blocked (429 error)")
     print("   - 6-10 unpaid invoices: 1 request per 5 minutes")
     print("   - 11+ unpaid invoices:  Blocked completely")
     print()
