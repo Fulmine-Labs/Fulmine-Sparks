@@ -383,27 +383,11 @@ MIT License - see LICENSE file for details.
 
 ## Contributing
 
-Contributions are welcome! Please note:
-
-1. **Fork and branch:** Create a feature branch from `master`
-2. **Test thoroughly:** Run `python client.py test-rate-manual` before submitting
-3. **Keep it focused:** One feature per PR
-4. **Document changes:** Update README if needed
-5. **Security first:** Never commit secrets or API keys
-
-### Reporting Issues
-- Found a bug? Open a GitHub issue with reproducible steps
-- Security issue? See [SECURITY.md](SECURITY.md) for responsible disclosure
-- Feature request? Describe the use case and expected behavior
-
-### Development Setup
-```bash
-git clone https://github.com/Fulmine-Labs/Fulmine-Sparks.git
-cd Fulmine-Sparks
-pip install -r requirements.txt
-export ALBY_API_TOKEN=your_token_here
-python client.py
-```
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines including:
+- How to report issues and security vulnerabilities
+- Development setup and testing procedures
+- Code standards and best practices
+- How to submit pull requests
 
 ---
 
