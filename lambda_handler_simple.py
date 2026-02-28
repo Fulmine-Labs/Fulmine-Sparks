@@ -161,17 +161,14 @@ def get_rate_limit_for_ip(ip):
     """Get rate limit based on unpaid invoices"""
     if ip not in IP_TRACKING:
         return RATE_LIMITS[0]
-
+    
     unpaid_count = IP_TRACKING[ip].get('unpaid_invoices', 0)
-
-    # Find the appropriate rate limit - thresholds work as "at or above this count"
-    # Check in reverse order to find the highest matching threshold
-    for threshold in sorted(RATE_LIMITS.keys(), reverse=True):
-        if threshold == float('inf'):
-            continue  # Skip infinity, we'll use it as fallback
-        if unpaid_count >= threshold:
+    
+    # Find the appropriate rate limit
+    for threshold in sorted(RATE_LIMITS.keys()):
+        if unpaid_count <= threshold:
             return RATE_LIMITS[threshold]
-
+    
     return RATE_LIMITS[float('inf')]
 
 
@@ -450,7 +447,14 @@ def lambda_handler(event, context):
             })
         
         elif path == '/api/v1/services/image/generate' and http_method == 'POST':
+            # Check rate limit
             client_ip = get_client_ip(event)
+            allowed, reason = check_rate_limit(client_ip)
+            
+            if not allowed:
+                print(f"⛔ Rate limit exceeded for {client_ip}: {reason}")
+                return error_response(429, f"Rate limited: {reason}")
+            
             return generate_image(body_data, client_ip)
         
         elif path.startswith('/api/v1/services/image/status/') and http_method == 'GET':
@@ -459,18 +463,12 @@ def lambda_handler(event, context):
             billing_client = None
             if BILLING_ENABLED:
                 try:
-                    # Try to create billing client for payment checking
-                    from billing import AlbyBillingClient
-                    alby_nwc_url = os.getenv("ALBY_NWC_URL")
-                    try:
+                    alby_nwc_url = os.getenv('ALBY_NWC_URL')
+                    if alby_nwc_url:
                         billing_client = AlbyBillingClient(nwc_url=alby_nwc_url)
-                    except ValueError:
-                        # NWC not configured, but create a client anyway for payment checking
-                        billing_client = AlbyBillingClient.__new__(AlbyBillingClient)
-                        billing_client.nwc_url = None
-                        print("✅ Billing client created for payment checking (no invoice creation)")
                 except Exception as e:
                     print(f"⚠️  Could not create billing client: {str(e)}")
+            return get_image_status_endpoint(payment_hash, billing_client)
         
         elif path.startswith('/api/v1/services/image/retrieve/') and http_method == 'GET':
             payment_hash = path.split('/api/v1/services/image/retrieve/')[-1]

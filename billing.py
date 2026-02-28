@@ -116,14 +116,26 @@ class AlbyBillingClient:
         Initialize Alby billing client
         
         Args:
-            nwc_url: Alby Hub NWC Connection String (optional, only needed for creating invoices)
+            nwc_url: Alby Hub NWC Connection String (defaults to ALBY_NWC_URL env var)
+                     Format: nostr+walletconnect://pubkey?relay=wss://...&secret=...
         """
-        self.nwc_url = nwc_url or os.getenv("ALBY_NWC_URL")
-        if self.nwc_url:
-            self._parse_nwc_url()
-            print(f"✅ Alby Hub NWC client initialized")
-        else:
-            print(f"ℹ️  Alby client initialized (NWC not configured - invoice creation unavailable)")
+        self.nwc_url = nwc_url or os.getenv('ALBY_NWC_URL')
+        
+        if not self.nwc_url:
+            raise ValueError(
+                "ALBY_NWC_URL environment variable not set.\n"
+                "Get it from Alby Hub:\n"
+                "1. Go to App Store\n"
+                "2. Click 'Connect' or 'Add New App'\n"
+                "3. Name it 'Fulmine-Sparks'\n"
+                "4. Select: Create invoices + Look up Status of Invoices\n"
+                "5. Copy the NWC Connection String"
+            )
+        
+        # Parse NWC URL to extract components
+        self._parse_nwc_url()
+        print(f"✅ Alby Hub NWC client initialized")
+    
     def _parse_nwc_url(self):
         """Parse NWC URL to extract relay and secret"""
         try:
@@ -200,14 +212,6 @@ class AlbyBillingClient:
             if response.status_code in [200, 201]:
                 invoice_data = response.json()
                 print(f"✅ Real invoice created via Alby API")
-                print(f"📋 Invoice response keys: {list(invoice_data.keys())}")
-                
-                # Debug: print all fields to understand the response structure
-                for key, value in invoice_data.items():
-                    if isinstance(value, str) and len(str(value)) > 100:
-                        print(f"   {key}: {str(value)[:50]}...")
-                    else:
-                        print(f"   {key}: {value}")
                 
                 result = {
                     "payment_request": invoice_data.get('payment_request'),
@@ -283,17 +287,8 @@ class AlbyBillingClient:
                     
                     invoices = response.json()
                     if isinstance(invoices, list):
-                        print(f"📋 Searching through {len(invoices)} invoices for: {payment_hash[:16]}...")
-                        for i, invoice in enumerate(invoices):
-                            # Debug: print first invoice structure
-                            if i == 0:
-                                print(f"   First invoice keys: {list(invoice.keys())}")
-                            
+                        for invoice in invoices:
                             # Check multiple possible payment hash fields
-                            invoice_hash = invoice.get('payment_hash') or invoice.get('r_hash_str') or invoice.get('hash')
-                            if i < 3:  # Print first 3 for debugging
-                                print(f"   Invoice {i}: hash={invoice_hash[:16] if invoice_hash else 'None'}... settled={invoice.get('settled')}")
-                            
                             if (invoice.get('payment_hash') == payment_hash or 
                                 invoice.get('r_hash_str') == payment_hash or
                                 invoice.get('hash') == payment_hash):
