@@ -161,14 +161,17 @@ def get_rate_limit_for_ip(ip):
     """Get rate limit based on unpaid invoices"""
     if ip not in IP_TRACKING:
         return RATE_LIMITS[0]
-    
+
     unpaid_count = IP_TRACKING[ip].get('unpaid_invoices', 0)
-    
-    # Find the appropriate rate limit
-    for threshold in sorted(RATE_LIMITS.keys()):
-        if unpaid_count <= threshold:
+
+    # Find the appropriate rate limit - thresholds work as "at or above this count"
+    # Check in reverse order to find the highest matching threshold
+    for threshold in sorted(RATE_LIMITS.keys(), reverse=True):
+        if threshold == float('inf'):
+            continue  # Skip infinity, we'll use it as fallback
+        if unpaid_count >= threshold:
             return RATE_LIMITS[threshold]
-    
+
     return RATE_LIMITS[float('inf')]
 
 
@@ -447,14 +450,7 @@ def lambda_handler(event, context):
             })
         
         elif path == '/api/v1/services/image/generate' and http_method == 'POST':
-            # Check rate limit
             client_ip = get_client_ip(event)
-            allowed, reason = check_rate_limit(client_ip)
-            
-            if not allowed:
-                print(f"⛔ Rate limit exceeded for {client_ip}: {reason}")
-                return error_response(429, f"Rate limited: {reason}")
-            
             return generate_image(body_data, client_ip)
         
         elif path.startswith('/api/v1/services/image/status/') and http_method == 'GET':
