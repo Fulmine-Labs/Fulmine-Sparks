@@ -503,6 +503,113 @@ Crawl-delay: 1
     """)
 
 
+def test_rate_limiting_manual():
+    """Interactive test: Generate unpaid invoices, get blocked, then unblock by paying"""
+    print_header("Manual Rate Limiting Test - Full Workflow")
+
+    client = FulmineSparkClient()
+
+    print("This test lets you manually test the full rate limit cycle:")
+    print("1. Generate 3 unpaid invoices")
+    print("2. Get blocked on 4th attempt")
+    print("3. Manually pay one invoice")
+    print("4. Verify unblocking\n")
+
+    prompt = input("Enter a test prompt (or press Enter for default): ").strip()
+    if not prompt:
+        prompt = "A beautiful sunset over mountains"
+
+    print(f"\nUsing prompt: {prompt}\n")
+
+    invoices = []
+
+    # Phase 1: Generate 3 unpaid invoices
+    print("="*80)
+    print("  Phase 1: Generate 3 Unpaid Invoices")
+    print("="*80)
+    print()
+
+    for i in range(1, 4):
+        print(f"Generating invoice {i}...")
+        result = client.generate_image(prompt=prompt, num_outputs=1)
+
+        if "error" in result:
+            print(f"  ❌ Error: {result['error']}")
+            return
+
+        if "status" in result and result["status"] == "payment_required":
+            invoice = result.get("invoice", {})
+            invoices.append({
+                'num': i,
+                'payment_hash': invoice.get('payment_hash'),
+                'payment_request': invoice.get('payment_request'),
+                'amount': invoice.get('amount_sats'),
+                'price': invoice.get('price_usd')
+            })
+            print(f"  ✅ Invoice {i} created")
+            print(f"     Amount: {invoice.get('amount_sats')} sats (${invoice.get('price_usd'):.4f})")
+            print()
+
+    # Phase 2: Try 4th request (should be blocked)
+    print("="*80)
+    print("  Phase 2: Attempt 4th Request (Should Be Blocked)")
+    print("="*80)
+    print()
+
+    print("Attempting to generate 4th image...")
+    result = client.generate_image(prompt=prompt, num_outputs=1)
+
+    if "error" in result:
+        print(f"  ✅ BLOCKED as expected!")
+        print(f"     {result['error']}")
+    else:
+        print(f"  ❌ NOT BLOCKED (but should be!)")
+        return
+
+    print()
+
+    # Phase 3: Show payment instructions
+    print("="*80)
+    print("  Phase 3: Payment Instructions")
+    print("="*80)
+    print()
+
+    print("Your unpaid invoices:\n")
+    for inv in invoices:
+        print(f"Invoice {inv['num']}: {inv['amount']} sats (${inv['price']:.4f})")
+        print(f"  Payment Request:")
+        print(f"  {inv['payment_request']}\n")
+
+    print("To unblock yourself, pay ONE invoice with:")
+    print(f"  python client.py pay '<payment_request>'\n")
+
+    input("When you've paid an invoice, press Enter to verify unblocking...")
+
+    # Phase 4: Try generating again (should work)
+    print()
+    print("="*80)
+    print("  Phase 4: Verify Unblocking")
+    print("="*80)
+    print()
+
+    print("Attempting to generate image...")
+    result = client.generate_image(prompt=prompt, num_outputs=1)
+
+    if "error" in result:
+        print(f"  ❌ Still blocked: {result['error']}")
+        print("   (Payment may not have been confirmed yet. Try again in a moment.)")
+    elif "status" in result and result["status"] == "payment_required":
+        print(f"  ✅ UNBLOCKED!")
+        print(f"     New invoice created - rate limit decremented!")
+        print(f"     You can now generate more images.")
+    else:
+        print(f"  ⚠️  Unexpected response: {result}")
+
+    print()
+    input("Press Enter to return to menu...")
+    print()
+
+
 def test_rate_limiting():
     """Test rate limiting by creating unpaid invoices (blocked at 3)"""
     print_header("Rate Limiting Test - Unpaid Invoice Counter")
@@ -806,8 +913,9 @@ def main():
     print("  5. retrieve   - Retrieve image")
     print("  6. pay        - Pay an invoice")
     print("  7. bot-sim    - Run bot simulator (mock)")
-    print("  8. test-rate  - Test rate limiting")
-    print("  9. exit       - Exit the client")
+    print("  8. test-rate  - Test rate limiting (auto)")
+    print("  9. test-rate-manual - Test rate limiting (interactive)")
+    print("  10. exit       - Exit the client")
     print()
     
     while True:
@@ -1017,13 +1125,16 @@ def main():
             
             elif command in ["8", "test-rate", "test"]:
                 test_rate_limiting()
-            
-            elif command in ["9", "exit", "quit"]:
+
+            elif command in ["9", "test-rate-manual"]:
+                test_rate_limiting_manual()
+
+            elif command in ["10", "exit", "quit"]:
                 print("\n👋 Goodbye!")
                 break
-            
+
             else:
-                print("❌ Invalid command. Please enter 1-9.")
+                print("❌ Invalid command. Please enter 1-10.")
         
         except KeyboardInterrupt:
             print("\n\n👋 Goodbye!")
@@ -1295,7 +1406,7 @@ if __name__ == "__main__":
             test_rate_limiting()
         
         else:
-            print("Usage: python client.py [health|models|generate '<prompt>' [num_outputs]|status <payment_hash>|retrieve <payment_hash>|pay '<payment_request>'|bot-sim|test-rate]")
+            print("Usage: python client.py [health|models|generate '<prompt>' [num_outputs]|status <payment_hash>|retrieve <payment_hash>|pay '<payment_request>'|bot-sim|test-rate|test-rate-manual]")
             sys.exit(1)
     else:
         # Interactive mode
