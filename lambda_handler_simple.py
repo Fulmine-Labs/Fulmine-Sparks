@@ -617,14 +617,16 @@ def generate_image(body_data, client_ip=None):
         if not api_token:
             return error_response(500, "REPLICATE_API_TOKEN not set")
         
-        # Map model names to Replicate versions
-        # Versions verified from https://replicate.com
+        # Map model names to Replicate model identifiers
+        # Format: owner/model (Replicate will use the latest version)
         model_map = {
             # Bytedance Seedream 4.5 (excellent quality, 4K support)
+            # See: https://replicate.com/bytedance/seedream-4.5
             'seedream-4.5': 'bytedance/seedream-4.5',
         }
         
         model_version = model_map.get(model, model)
+        print(f"🎨 Using model: {model_version}")
         
         # Call Replicate API directly using requests
         import requests
