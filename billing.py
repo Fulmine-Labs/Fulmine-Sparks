@@ -116,26 +116,14 @@ class AlbyBillingClient:
         Initialize Alby billing client
         
         Args:
-            nwc_url: Alby Hub NWC Connection String (defaults to ALBY_NWC_URL env var)
-                     Format: nostr+walletconnect://pubkey?relay=wss://...&secret=...
+            nwc_url: Alby Hub NWC Connection String (optional, only needed for creating invoices)
         """
-        self.nwc_url = nwc_url or os.getenv('ALBY_NWC_URL')
-        
-        if not self.nwc_url:
-            raise ValueError(
-                "ALBY_NWC_URL environment variable not set.\n"
-                "Get it from Alby Hub:\n"
-                "1. Go to App Store\n"
-                "2. Click 'Connect' or 'Add New App'\n"
-                "3. Name it 'Fulmine-Sparks'\n"
-                "4. Select: Create invoices + Look up Status of Invoices\n"
-                "5. Copy the NWC Connection String"
-            )
-        
-        # Parse NWC URL to extract components
-        self._parse_nwc_url()
-        print(f"✅ Alby Hub NWC client initialized")
-    
+        self.nwc_url = nwc_url or os.getenv("ALBY_NWC_URL")
+        if self.nwc_url:
+            self._parse_nwc_url()
+            print(f"✅ Alby Hub NWC client initialized")
+        else:
+            print(f"ℹ️  Alby client initialized (NWC not configured - invoice creation unavailable)")
     def _parse_nwc_url(self):
         """Parse NWC URL to extract relay and secret"""
         try:
