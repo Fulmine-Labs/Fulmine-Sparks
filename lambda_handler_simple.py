@@ -459,12 +459,18 @@ def lambda_handler(event, context):
             billing_client = None
             if BILLING_ENABLED:
                 try:
-                    alby_nwc_url = os.getenv('ALBY_NWC_URL')
-                    if alby_nwc_url:
+                    # Try to create billing client for payment checking
+                    from billing import AlbyBillingClient
+                    alby_nwc_url = os.getenv("ALBY_NWC_URL")
+                    try:
                         billing_client = AlbyBillingClient(nwc_url=alby_nwc_url)
+                    except ValueError:
+                        # NWC not configured, but create a client anyway for payment checking
+                        billing_client = AlbyBillingClient.__new__(AlbyBillingClient)
+                        billing_client.nwc_url = None
+                        print("✅ Billing client created for payment checking (no invoice creation)")
                 except Exception as e:
                     print(f"⚠️  Could not create billing client: {str(e)}")
-            return get_image_status_endpoint(payment_hash, billing_client)
         
         elif path.startswith('/api/v1/services/image/retrieve/') and http_method == 'GET':
             payment_hash = path.split('/api/v1/services/image/retrieve/')[-1]
