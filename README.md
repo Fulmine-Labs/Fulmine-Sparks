@@ -1,136 +1,95 @@
 # Fulmine-Sparks: Serverless AI Image Generation with Lightning Payments
 
 **Status:** ✅ Production Ready
-**Version:** 1.0.0 - Rate Limiting Implementation Complete
+**Version:** 1.0.0
 **Date:** February 28, 2026
 
 ## Quick Start
 
-### For Users
-Generate images by paying with Bitcoin Lightning:
+### Generate an Image in 3 Steps
 ```bash
 python client.py
-# Command: 7 (Generate Image)
-# Enter prompt, get BOLT11 invoice, pay with Lightning wallet
+# 1. Enter your image prompt
+# 2. Scan the Lightning invoice with your wallet to pay
+# 3. Get your generated image
 ```
 
-### For Testing Rate Limiting
+### Automated Workflow Test
+Watch the full workflow: generate image → pay → retrieve result:
 ```bash
-python client.py test-rate-manual
-# Automated test: blocks at 3 unpaid invoices, unblocks after payment
+python client.py
+# Menu: 7 (Bot Simulator)
+#   - Option 2 (Payment Bot): Auto-generates image, pays invoice, retrieves result
+#   - Expected duration: ~30 seconds
+```
+
+## How It Works: The Main Workflow
+
+```
+┌─────────────────────────────────────────┐
+│ 1. Request Image Generation             │
+│    POST /api/v1/services/image/generate │
+│    payload: { "prompt": "..." }         │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 2. Receive Lightning Invoice             │
+│    BOLT11: lnbc77...                    │
+│    Amount: 77 sats (~$0.05)             │
+│    payment_hash: abc123...              │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 3. Pay with Lightning Wallet             │
+│    Scan QR code with Alby or other      │
+│    (instant payment - less than 1 sec)  │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 4. Poll for Image Status                │
+│    GET /api/v1/services/image/status/.. │
+│    Returns: "pending" or "available"    │
+└──────────────┬──────────────────────────┘
+               ↓
+┌─────────────────────────────────────────┐
+│ 5. Retrieve Generated Image              │
+│    GET /api/v1/services/image/retrieve/.│
+│    Returns: base64-encoded image        │
+└─────────────────────────────────────────┘
 ```
 
 ## What This Is
 
-Fulmine-Sparks is a serverless API that:
-- ✅ Generates high-quality images using AI models (SeeDream 4.5)
-- ✅ Requires Bitcoin Lightning Network payments
-- ✅ Implements simple, fair rate limiting (blocks at 3 unpaid invoices)
-- ✅ Uses AWS Lambda, DynamoDB, and Alby Wallet API
-- ✅ Runs completely serverless with no infrastructure management
+Fulmine-Sparks is a serverless image generation API that combines AI with cryptocurrency payments:
+- ✅ **Generates high-quality images** using AI models (SeeDream 4.5)
+- ✅ **Pays with Bitcoin Lightning** - instant, low-fee payments
+- ✅ **Runs completely serverless** - AWS Lambda + DynamoDB, no servers to manage
+- ✅ **Fair rate limiting** - honest users have unlimited access
 
 ## Key Features
 
-### Rate Limiting
-- **Simple Rule:** Block users with 3+ unpaid invoices
-- **Fair:** Paying customers have unlimited access
-- **Transparent:** Users know exactly what's blocking them
-- **Persistent:** Tracked in DynamoDB, survives Lambda restarts
-- **Automatic Clearing:** Counter decrements when invoices are paid
-
-### Payment System
-- Bitcoin Lightning Network via Alby Wallet
-- BOLT11 invoice generation per image request
-- Automatic payment detection
-- Immediate unblocking after payment
-
 ### Image Generation
-- SeeDream 4.5 model for high-quality output
-- Configurable prompts and parameters
-- Base64 encoding for API response
-- 2-minute cache for payment confirmation period
+- **SeeDream 4.5** model for high-quality, stunning images
+- **Custom prompts** - describe what you want to see
+- **Quick generation** - 30-60 seconds per image
+- **Cached results** - 2-minute window for payment confirmation
 
-### Testing
-- Automated rate limiting test
-- Payment flow verification
-- API compliance checker
-- Bot simulator for load testing
+### Payments with Lightning
+- **Bitcoin Lightning Network** - instant, low-fee payments via Alby Wallet
+- **BOLT11 invoices** - industry-standard format, QR code ready
+- **Micro-payments** - typical image costs only ~$0.05 (77 sats)
+- **Automatic detection** - payment confirmed in <1 second
 
-## Architecture
+### Rate Limiting (Fair Use)
+- **Simple rule:** Users with 3+ unpaid invoices are temporarily blocked
+- **Paying customers:** Have unlimited access
+- **Transparent:** Always know your status
+- **Auto-clearing:** Counter resets when you pay
 
-```
-Client (CLI)
-    ↓
-API Gateway
-    ↓
-Lambda Handler
-├── Rate Limit Check (DynamoDB)
-├── Invoice Generation
-├── Image Generation (Replicate)
-└── Payment Status Checking (Alby)
-    ↓
-DynamoDB
-├── fulmine-sparks-rate-limits (IP tracking)
-└── fulmine-sparks-images (cache)
-    ↓
-External APIs
-├── Alby Wallet (Lightning payments)
-└── Replicate (Image generation)
-```
 
-## Database Schema
+## Using the API
 
-### rate-limits Table
-```json
-{
-  "client_ip": "203.0.113.42",
-  "unpaid_invoices": 2,
-  "ttl": 1708881234
-}
-```
-
-### images Table
-```json
-{
-  "payment_hash": "abc123def456...",
-  "status": "pending|available|expired",
-  "image_base64": "[large base64 string]",
-  "created_at": 1708880034,
-  "expires_at": 1708880154,
-  "ttl": 1708880154
-}
-```
-
-## Rate Limiting Flow
-
-```
-Generate Image Request
-    ↓
-Extract Client IP
-    ↓
-Query DynamoDB: unpaid_invoices count
-    ↓
-IF count >= 3:
-    RETURN 429 error
-    "You have 3 unpaid invoices. Please pay before requesting more images."
-    ↓
-ELSE:
-    Generate invoice
-    Increment counter: unpaid_invoices += 1
-    RETURN BOLT11 payment request
-    ↓
-    [User pays via Alby]
-    ↓
-    Status check → Payment detected
-    ↓
-    Decrement counter: unpaid_invoices -= 1
-    User unblocked
-```
-
-## API Endpoints
-
-### `POST /api/v1/services/image/generate`
-Generate an image (requires payment)
+### Step 1: Request Image Generation
 ```bash
 curl -X POST \
   -H "Content-Type: application/json" \
@@ -142,150 +101,272 @@ curl -X POST \
   https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod/api/v1/services/image/generate
 ```
 
-**Response (Success):**
+**Success Response:**
 ```json
 {
   "status": "payment_required",
   "invoice": {
-    "payment_hash": "...",
-    "payment_request": "lnbc...",
+    "payment_hash": "abc123def456",
+    "payment_request": "lnbc77...",
     "amount_sats": 77,
     "price_usd": 0.05
   }
 }
 ```
 
-**Response (Rate Limited):**
+Save the `payment_hash` - you'll need it later.
+
+### Step 2: Pay the Invoice
+Scan the QR code from `payment_request` (BOLT11 format) with your Lightning wallet:
+- **Alby Wallet** (recommended): https://getalby.com
+- **Wallet of Satoshi**: Mobile app
+- Any Lightning-compatible wallet
+
+Payment is instant and non-reversible.
+
+### Step 3: Check Image Status
+Poll the status endpoint after paying:
+```bash
+curl https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod/api/v1/services/image/status/abc123def456
+```
+
+**Response When Ready:**
+```json
+{
+  "status": "available",
+  "created_at": 1708880034,
+  "expires_at": 1708880154
+}
+```
+
+### Step 4: Retrieve Your Image
+```bash
+curl https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod/api/v1/services/image/retrieve/abc123def456
+```
+
+**Response:**
+```json
+{
+  "status": "available",
+  "image_base64": "[large base64 encoded image]"
+}
+```
+
+### Other Endpoints
+
+**Health Check:**
+```bash
+curl https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod/health
+```
+
+**Rate Limit Hit?**
 ```json
 {
   "status": 429,
   "error": "Rate limited: You have 3 unpaid invoices. Please pay before requesting more images."
 }
 ```
+If you see this, pay one of your outstanding invoices to unblock.
 
-### `GET /api/v1/services/image/status/{payment_hash}`
-Check image generation status
-```bash
-curl https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod/api/v1/services/image/status/abc123...
-```
+## Setup & Configuration
 
-### `GET /api/v1/services/image/retrieve/{payment_hash}`
-Retrieve generated image after payment
+### Quick Setup Checklist
+- [ ] Create DynamoDB tables (`fulmine-sparks-rate-limits`, `fulmine-sparks-images`)
+- [ ] Enable TTL on both tables
+- [ ] Deploy `lambda_handler_simple.py` to AWS Lambda
+- [ ] Set Lambda environment variables (see below)
+- [ ] Test with `python client.py health`
 
-### `GET /health`
-Health check endpoint
-
-## Configuration
-
-### Environment Variables (Lambda)
+### Lambda Environment Variables
 ```bash
 RATE_LIMITS_TABLE=fulmine-sparks-rate-limits
 IMAGES_TABLE=fulmine-sparks-images
-ALBY_NWC_URL=nwc://...
-REPLICATE_API_TOKEN=...
+ALBY_NWC_URL=nwc://...              # Lightning Network Connect URL
+REPLICATE_API_TOKEN=...              # Image generation API key
 ```
 
-### Environment Variables (Client)
+### Client Environment Variables
 ```bash
-ALBY_API_TOKEN=your_alby_token
+ALBY_API_TOKEN=your_alby_token       # For automatic payment in tests
 ```
 
-## Bot Integration
-
-### Simple Bot Example
-```python
-from fulmine_spark_client import FulmineSparkClient
-from alby import Alby
-
-# Initialize client
-client = FulmineSparkClient()
-alby = Alby(token=os.getenv("ALBY_API_TOKEN"))
-
-# Generate image
-result = client.generate_image(prompt="sunset over mountains")
-invoice = result["invoice"]["payment_request"]
-payment_hash = result["invoice"]["payment_hash"]
-
-# Pay invoice
-alby.pay_invoice(invoice)
-
-# Poll for completion
-status = client.poll_status(payment_hash, timeout=30)
-if status["status"] == "available":
-    image_base64 = client.retrieve_image(payment_hash)
-    # Save or process image
+### IAM Role Permissions
+Your Lambda execution role needs:
+```json
+{
+  "Effect": "Allow",
+  "Action": ["dynamodb:GetItem", "dynamodb:PutItem"],
+  "Resource": [
+    "arn:aws:dynamodb:us-east-2:*:table/fulmine-sparks-rate-limits",
+    "arn:aws:dynamodb:us-east-2:*:table/fulmine-sparks-images"
+  ]
+}
 ```
 
-### Rate Limit Handling
+## Programmatic Usage
+
+### Python Example: Full Workflow
 ```python
-# Generate image - might hit rate limit
+import requests
+import time
+import json
+
+# Step 1: Request image
+response = requests.post(
+    'https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod/api/v1/services/image/generate',
+    json={'prompt': 'sunset over mountains', 'model': 'seedream-4.5'}
+)
+invoice_data = response.json()['invoice']
+payment_hash = invoice_data['payment_hash']
+invoice_bolt11 = invoice_data['payment_request']
+
+print(f"Pay this invoice: {invoice_bolt11}")
+# User scans QR and pays...
+
+# Step 2: Wait for payment + image
+time.sleep(5)  # Give payment/generation time
+while True:
+    status = requests.get(
+        f'https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod/api/v1/services/image/status/{payment_hash}'
+    ).json()
+
+    if status['status'] == 'available':
+        break
+    time.sleep(2)
+
+# Step 3: Retrieve image
+image_response = requests.get(
+    f'https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod/api/v1/services/image/retrieve/{payment_hash}'
+)
+image_base64 = image_response.json()['image_base64']
+
+# Save to file
+import base64
+with open('generated_image.png', 'wb') as f:
+    f.write(base64.b64decode(image_base64))
+```
+
+### Handling Rate Limits
+```python
 try:
-    result = client.generate_image(prompt="...")
+    response = requests.post(endpoint, json=payload)
+    if response.status_code == 429:
+        error = response.json()
+        print(f"Blocked: {error['error']}")
+        print("Pay one of your outstanding invoices to unblock")
 except Exception as e:
-    if "429" in str(e):
-        print("Rate limited: You have 3 unpaid invoices")
-        print("Pay one invoice to unblock")
-    else:
-        raise
+    print(f"Error: {e}")
 ```
 
-### Full Workflow with Error Handling
+## Testing & Examples
+
+### Watch the Full Workflow (Recommended)
 ```bash
-# See client.py for complete production-ready implementation
-python client.py              # Interactive menu
-python client.py test-rate-manual  # Full workflow test
+python client.py
+# Menu: 7 (Bot Simulator)
+#   - Option 2 (Payment Bot): Generates image → pays → retrieves result
+#   - Expected duration: ~30 seconds
+#   - Watch the console to see each step in action
 ```
 
-## Testing
+### Manual Workflow Test
+```bash
+python client.py
+# Menu: 7 (Generate Image or Bot Simulator)
+# Follow the prompts to:
+# 1. Enter your prompt
+# 2. Get invoice (scan with Lightning wallet)
+# 3. Pay with Alby or other wallet
+# 4. Poll status until image is ready
+# 5. Retrieve your image
+```
 
-### Automated Rate Limiting Test
+### Test Rate Limiting
 ```bash
 python client.py test-rate-manual
 ```
+This generates 3 invoices, gets blocked on the 4th, pays one, then generates again successfully.
 
-**What it does:**
-1. Generates 3 unpaid invoices (all succeed)
-2. Blocks on 4th attempt (429 error)
-3. Automatically pays one invoice
-4. Generates 4th image (unblocked)
-
-**Expected Duration:** ~30 seconds
-
-### Manual Testing
+### Health Check
 ```bash
-# Test health
 python client.py health
-
-# Generate single image
-python client.py
-# Menu: 7 (generate-image)
-
-# Interactive menu
-python client.py
 ```
 
-### Verify DynamoDB State
+### Advanced: Check Database State
 ```bash
-# Check rate limits
+# View all rate limit entries
 aws dynamodb scan --table-name fulmine-sparks-rate-limits --region us-east-2
 
-# Check image cache
+# View all cached images
 aws dynamodb scan --table-name fulmine-sparks-images --region us-east-2
 ```
 
+## Technical Details
+
+### Architecture Overview
+```
+Client/Bot (HTTP)
+        ↓
+API Gateway (route /api/v1/services/image/*)
+        ↓
+Lambda Handler (rate limit check → invoice gen → image gen → payment check)
+        ↓
+       ┌─────────────┬──────────────────┬──────────────┐
+       ↓             ↓                  ↓              ↓
+   DynamoDB      Replicate API      Alby Wallet    Alby NWC
+(rate limits,   (image gen)      (payment check)  (payment detection)
+  image cache)
+```
+
+### Database Schema
+
+**fulmine-sparks-rate-limits table:**
+```json
+{
+  "client_ip": "203.0.113.42",
+  "unpaid_invoices": 2,
+  "ttl": 1708881234
+}
+```
+
+**fulmine-sparks-images table:**
+```json
+{
+  "payment_hash": "abc123def456...",
+  "status": "pending|available|expired",
+  "image_base64": "[large base64 string]",
+  "created_at": 1708880034,
+  "expires_at": 1708880154,
+  "ttl": 1708880154
+}
+```
+
+### Rate Limiting Logic
+The system enforces a simple, transparent rule:
+1. Each request checks: *"How many unpaid invoices does this IP have?"*
+2. If **≥3 unpaid invoices**: Return 429 error (blocked)
+3. If **<3 unpaid invoices**: Generate invoice and increment counter
+4. When payment detected: Decrement counter (unblock)
+5. Auto-cleanup: TTL deletes entries after 1 hour
+
+This means paying users have unlimited access.
+
+### Performance Characteristics
+| Metric | Value |
+|--------|-------|
+| Rate Limit Check | <5ms |
+| Image Generation | 30-60 seconds |
+| Payment Detection | <1 second |
+| DynamoDB Operations | 1-2 per request |
+| Monthly Cost | ~$0.25 (DynamoDB) |
+
 ## Deployment
 
-### Prerequisite Setup
-1. Create DynamoDB tables (see FINAL_WORKING_VERSION.md)
-2. Set Lambda environment variables
-3. Configure IAM role permissions
-4. Deploy lambda_handler_simple.py to AWS Lambda
-
-### Deploy Command
+### Build & Deploy
 ```bash
-# Build deployment package
+# Package code
 python3 -c "
-import zipfile, os
+import zipfile
 with zipfile.ZipFile('fulmine-sparks.zip', 'w') as z:
     z.write('lambda_handler_simple.py')
     z.write('billing.py')
@@ -297,77 +378,72 @@ aws lambda update-function-code \
   --zip-file fileb://fulmine-sparks.zip
 ```
 
-### Post-Deploy Verification
+### Verify Deployment
 ```bash
 # Health check
 curl https://c2f4z5jyqj.execute-api.us-east-2.amazonaws.com/prod/health
 
-# Rate limiting test
+# Full workflow test
 python client.py test-rate-manual
 ```
 
-## Documentation
-
-- **FINAL_WORKING_VERSION.md** - Complete working features and testing guide
-- **FULMINE_SPARKS_ANALYSIS.md** - Architecture and design analysis
-- **DEPLOYMENT_STEPS.md** - Detailed deployment instructions
-- **QUICKSTART.md** - Getting started guide
+### See Also
+- **FINAL_WORKING_VERSION.md** - Complete feature list and troubleshooting
+- **DEPLOYMENT_STATUS.md** - Pre-deployment checklist
 
 ## Troubleshooting
 
-### "Rate limited: You have 3 unpaid invoices"
-✅ This is working correctly! You've created 3 invoices without paying. Pay one to unblock.
+### Image Test Fails Immediately
+**Problem:** First request returns 429 (rate limited)
+- **Cause:** Old test data in DynamoDB from previous tests
+- **Fix:** Scan the `fulmine-sparks-rate-limits` table and delete old entries, or wait 1 hour for TTL cleanup
 
-### Status check returns "pending" instead of "available"
-- Payment may not have settled yet (Lightning can take a few seconds)
-- Check Alby wallet to confirm payment was received
-- Try status check again after 5 seconds
+### Status Stays "Pending" After Paying
+**Problem:** You paid, but image status never changes to "available"
+- **Cause:** Usually means ALBY_NWC_URL is not set
+- **Fix:** Verify Lambda env var: `aws lambda get-function-configuration --function-name fulmine-sparks | grep ALBY_NWC_URL`
+- **Workaround:** Try again after 5 seconds, or check CloudWatch logs
 
-### DynamoDB errors in CloudWatch
-- Verify tables exist: `fulmine-sparks-rate-limits` and `fulmine-sparks-images`
-- Check TTL is enabled on both tables
-- Verify Lambda IAM role has GetItem/PutItem permissions
+### "Rate Limited" Block
+**This is expected behavior!** You've created 3 unpaid invoices:
+- Pay one of your existing invoices to decrement the counter
+- Or wait 1 hour for TTL to auto-clear
 
-### Lambda logs show "BILLING_ENABLED=False"
-- Set ALBY_NWC_URL environment variable
-- Check that billing.py is deployed
+### DynamoDB Errors in CloudWatch
+- Check tables exist: `aws dynamodb list-tables --region us-east-2`
+- Enable TTL on both tables (AWS Console → Tables → TTL)
+- Verify Lambda IAM permissions (GetItem, PutItem)
 
-## Features Implemented
+## Documentation
 
-✅ Simple rate limiting (block at 3 unpaid)
-✅ DynamoDB-backed persistent tracking
-✅ Payment detection via Alby
-✅ Automatic counter decrement
-✅ In-memory fallback
-✅ Automated testing
-✅ Comprehensive documentation
-✅ CloudWatch logging
-✅ TTL auto-cleanup
+- **FINAL_WORKING_VERSION.md** - Complete feature reference and testing guide
+- **DEPLOYMENT_STATUS.md** - Pre-deployment checklist
+- **aws-troubleshooting.md** - AWS CLI debugging commands
 
-## Performance
+## What's Implemented
 
-| Metric | Value |
-|--------|-------|
-| Rate Limit Check | <5ms |
-| Image Generation | 30-60 seconds |
-| Payment Detection | <1 second |
-| DynamoDB Operations | 1-2 per request |
-| Monthly Cost | ~$0.25 (DynamoDB) |
+✅ **Image Generation** - SeeDream 4.5 via Replicate
+✅ **Lightning Payments** - BOLT11 invoices via Alby
+✅ **Rate Limiting** - Fair use (3 unpaid invoice max)
+✅ **Payment Detection** - Auto-confirm in <1 second
+✅ **Persistent Tracking** - DynamoDB with TTL auto-cleanup
+✅ **Automated Testing** - Full workflow tests included
+✅ **CloudWatch Logging** - Complete audit trail
 
 ## Known Limitations
 
-- Rate limit threshold is fixed at 3 (can be adjusted in code)
-- No per-user whitelist (all users equal)
+- Rate limit threshold is fixed at 3 (editable in code)
+- No per-user accounts (IP-based rate limiting)
 - No analytics dashboard
-- Payment confirmation is polling-based (not webhook)
+- Payment confirmation is polling (not webhook)
 
-## Future Enhancements
+## Roadmap
 
 - [ ] Webhook-based payment confirmation
-- [ ] Per-IP analytics dashboard
+- [ ] Per-user accounts and dashboards
 - [ ] Configurable rate limit tiers
-- [ ] Email notifications
-- [ ] Automatic retry with exponential backoff
+- [ ] Email receipt notifications
+- [ ] Automatic retry with backoff
 
 ## Support
 
